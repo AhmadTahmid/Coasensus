@@ -9,6 +9,7 @@ This folder is the deploy scaffold for Coasensus on Cloudflare.
 2. `Workers` serves API routes under `/api/*`:
    - `GET /api/health`
    - `GET /api/feed`
+   - `POST /api/admin/refresh-feed`
    - `POST /api/analytics`
    - `GET /api/analytics`
 3. `D1` stores curated feed + analytics + ingestion records.

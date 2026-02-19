@@ -1,3 +1,5 @@
+import { getFeedCounts, refreshCuratedFeed } from "./refresh";
+
 type MarketCategory =
   | "politics"
   | "economy"
@@ -13,6 +15,14 @@ interface Env {
   DB: D1Database;
   COASENSUS_APP_ORIGIN?: string;
   COASENSUS_DEFAULT_PAGE_SIZE?: string;
+  COASENSUS_ADMIN_REFRESH_TOKEN?: string;
+  COASENSUS_AUTO_REFRESH_ON_EMPTY?: string;
+  POLYMARKET_BASE_URL?: string;
+  COASENSUS_INGEST_LIMIT_PER_PAGE?: string;
+  COASENSUS_INGEST_MAX_PAGES?: string;
+  COASENSUS_INGEST_RETRIES?: string;
+  COASENSUS_INGEST_TIMEOUT_MS?: string;
+  COASENSUS_INGEST_RETRY_BACKOFF_MS?: string;
 }
 
 interface CuratedFeedRow {
@@ -138,7 +148,7 @@ function withCorsHeaders(origin: string): Headers {
   return new Headers({
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Admin-Token",
     "Content-Type": "application/json; charset=utf-8",
   });
 }
@@ -164,6 +174,37 @@ function defaultPageSize(env: Env): number {
   return asPositiveInt(env.COASENSUS_DEFAULT_PAGE_SIZE ?? null, 20, 1, 100);
 }
 
+function autoRefreshOnEmptyEnabled(env: Env): boolean {
+  return env.COASENSUS_AUTO_REFRESH_ON_EMPTY !== "0";
+}
+
+function hasRefreshAccess(request: Request, url: URL, env: Env): boolean {
+  const expectedToken = env.COASENSUS_ADMIN_REFRESH_TOKEN?.trim();
+  if (!expectedToken) {
+    return true;
+  }
+
+  const fromQuery = url.searchParams.get("token")?.trim();
+  if (fromQuery && fromQuery === expectedToken) {
+    return true;
+  }
+
+  const fromHeader = request.headers.get("X-Admin-Token")?.trim();
+  if (fromHeader && fromHeader === expectedToken) {
+    return true;
+  }
+
+  const authorization = request.headers.get("Authorization")?.trim();
+  if (authorization?.startsWith("Bearer ")) {
+    const bearer = authorization.slice(7).trim();
+    if (bearer && bearer === expectedToken) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 async function handleFeed(url: URL, env: Env, origin: string): Promise<Response> {
   try {
     const page = asPositiveInt(url.searchParams.get("page"), 1, 1, 10_000);
@@ -184,11 +225,26 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
 
     const whereSql = whereParts.length > 0 ? `WHERE ${whereParts.join(" AND ")}` : "";
 
-    const countRow = await env.DB.prepare(`SELECT COUNT(*) AS total FROM curated_feed ${whereSql}`)
+    let refreshSummary: Awaited<ReturnType<typeof refreshCuratedFeed>> | null = null;
+    let refreshError: string | null = null;
+
+    let countRow = await env.DB.prepare(`SELECT COUNT(*) AS total FROM curated_feed ${whereSql}`)
       .bind(...whereBindings)
       .first<{ total: number }>();
 
-    const totalItems = Number(countRow?.total ?? 0);
+    let totalItems = Number(countRow?.total ?? 0);
+    if (totalItems === 0 && autoRefreshOnEmptyEnabled(env)) {
+      try {
+        refreshSummary = await refreshCuratedFeed(env);
+        countRow = await env.DB.prepare(`SELECT COUNT(*) AS total FROM curated_feed ${whereSql}`)
+          .bind(...whereBindings)
+          .first<{ total: number }>();
+        totalItems = Number(countRow?.total ?? 0);
+      } catch (error) {
+        refreshError = asErrorMessage(error);
+      }
+    }
+
     const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
     const safePage = Math.min(page, totalPages);
     const offset = (safePage - 1) * pageSize;
@@ -257,6 +313,9 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
           category,
           includeRejected,
           sourcePath: "d1:curated_feed",
+          refreshAttempted: refreshSummary !== null || refreshError !== null,
+          refreshRunId: refreshSummary?.runId ?? null,
+          refreshError,
         },
         items,
       },
@@ -272,6 +331,37 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
       },
       origin
     );
+  }
+}
+
+async function handleAdminRefresh(
+  request: Request,
+  url: URL,
+  env: Env,
+  origin: string,
+  ctx: ExecutionContext
+): Promise<Response> {
+  if (!hasRefreshAccess(request, url, env)) {
+    return json(401, { error: "Unauthorized refresh request" }, origin);
+  }
+
+  const runAsync = url.searchParams.get("async") === "1";
+  if (runAsync) {
+    const startedAt = new Date().toISOString();
+    ctx.waitUntil(
+      refreshCuratedFeed(env).catch((error) => {
+        console.error("Async feed refresh failed:", asErrorMessage(error));
+      })
+    );
+    return json(202, { ok: true, queued: true, startedAt }, origin);
+  }
+
+  try {
+    const summary = await refreshCuratedFeed(env);
+    const counts = await getFeedCounts(env.DB);
+    return json(200, { ok: true, summary, counts }, origin);
+  } catch (error) {
+    return json(500, { error: "Feed refresh failed", detail: asErrorMessage(error) }, origin);
   }
 }
 
@@ -336,7 +426,7 @@ async function handleAnalyticsList(url: URL, env: Env, origin: string): Promise<
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const origin = resolveOrigin(request, env);
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: withCorsHeaders(origin) });
@@ -351,6 +441,10 @@ export default {
 
     if (pathname === "/feed" && request.method === "GET") {
       return handleFeed(url, env, origin);
+    }
+
+    if (pathname === "/admin/refresh-feed" && request.method === "POST") {
+      return handleAdminRefresh(request, url, env, origin, ctx);
     }
 
     if (pathname === "/analytics" && request.method === "POST") {
@@ -369,9 +463,26 @@ export default {
       404,
       {
         error: "Not found",
-        routes: ["/api/health", "/api/feed?page=1&pageSize=20&sort=score", "/api/analytics"],
+        routes: [
+          "/api/health",
+          "/api/feed?page=1&pageSize=20&sort=score",
+          "/api/admin/refresh-feed",
+          "/api/analytics",
+        ],
       },
       origin
+    );
+  },
+  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(
+      (async () => {
+        try {
+          const summary = await refreshCuratedFeed(env);
+          console.log("Scheduled refresh completed", summary);
+        } catch (error) {
+          console.error("Scheduled refresh failed:", asErrorMessage(error));
+        }
+      })()
     );
   },
 };

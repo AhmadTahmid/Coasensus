@@ -10,7 +10,13 @@
   },
   "vars": {
     "COASENSUS_APP_ORIGIN": "http://localhost:3000",
-    "COASENSUS_DEFAULT_PAGE_SIZE": "20"
+    "COASENSUS_DEFAULT_PAGE_SIZE": "20",
+    "COASENSUS_AUTO_REFRESH_ON_EMPTY": "1",
+    "COASENSUS_INGEST_LIMIT_PER_PAGE": "100",
+    "COASENSUS_INGEST_MAX_PAGES": "8",
+    "COASENSUS_INGEST_RETRIES": "2",
+    "COASENSUS_INGEST_TIMEOUT_MS": "12000",
+    "COASENSUS_INGEST_RETRY_BACKOFF_MS": "400"
   },
   "env": {
     "staging": {
@@ -23,7 +29,16 @@
       ],
       "vars": {
         "COASENSUS_APP_ORIGIN": "https://staging.coasensus.com",
-        "COASENSUS_DEFAULT_PAGE_SIZE": "20"
+        "COASENSUS_DEFAULT_PAGE_SIZE": "20",
+        "COASENSUS_AUTO_REFRESH_ON_EMPTY": "1",
+        "COASENSUS_INGEST_LIMIT_PER_PAGE": "100",
+        "COASENSUS_INGEST_MAX_PAGES": "8",
+        "COASENSUS_INGEST_RETRIES": "2",
+        "COASENSUS_INGEST_TIMEOUT_MS": "12000",
+        "COASENSUS_INGEST_RETRY_BACKOFF_MS": "400"
+      },
+      "triggers": {
+        "crons": ["*/30 * * * *"]
       },
       "d1_databases": [
         {
@@ -44,7 +59,16 @@
       ],
       "vars": {
         "COASENSUS_APP_ORIGIN": "https://coasensus.com",
-        "COASENSUS_DEFAULT_PAGE_SIZE": "20"
+        "COASENSUS_DEFAULT_PAGE_SIZE": "20",
+        "COASENSUS_AUTO_REFRESH_ON_EMPTY": "1",
+        "COASENSUS_INGEST_LIMIT_PER_PAGE": "100",
+        "COASENSUS_INGEST_MAX_PAGES": "8",
+        "COASENSUS_INGEST_RETRIES": "2",
+        "COASENSUS_INGEST_TIMEOUT_MS": "12000",
+        "COASENSUS_INGEST_RETRY_BACKOFF_MS": "400"
+      },
+      "triggers": {
+        "crons": ["*/15 * * * *"]
       },
       "d1_databases": [
         {
