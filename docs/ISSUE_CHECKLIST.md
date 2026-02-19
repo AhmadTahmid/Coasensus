@@ -22,9 +22,9 @@
 
 ## EPIC-03 API + Feed UI
 - [x] `WEB-001` Create curated feed API with pagination
-- [ ] `WEB-002` Build feed/card page with responsive layout
-- [ ] `WEB-003` Add category badges and sorting controls
-- [ ] `WEB-004` Add empty/loading/error states
+- [x] `WEB-002` Build feed/card page with responsive layout
+- [x] `WEB-003` Add category badges and sorting controls
+- [x] `WEB-004` Add empty/loading/error states
 - [ ] `WEB-005` Add basic analytics events
 
 ## EPIC-04 Infra + Deploy

@@ -30,4 +30,5 @@ npm install
 npm run check
 npm run smoke:ingest
 npm run dev:feed-api
+npm run dev:web
 ```

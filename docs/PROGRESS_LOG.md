@@ -15,3 +15,5 @@
 12. Validated live smoke run against Polymarket (`rawCount: 100`, `normalizedCount: 100`).
 13. Added local persistence for raw + normalized + snapshot artifacts under `infra/db/local`.
 14. Added local curated feed API (`/feed`) backed by latest persisted normalized data.
+15. Added local web feed UI with responsive cards wired to `/feed`.
+16. Added cross-origin support in feed API for local multi-port development.

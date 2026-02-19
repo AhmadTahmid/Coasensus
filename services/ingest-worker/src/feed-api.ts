@@ -3,6 +3,9 @@ import { loadAndBuildFeed, normalizeFeedQuery } from "./feed-store.js";
 
 function json(res: ServerResponse, statusCode: number, payload: unknown): void {
   res.statusCode = statusCode;
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.end(`${JSON.stringify(payload, null, 2)}\n`);
 }
@@ -23,6 +26,15 @@ function parsePort(): number {
 }
 
 async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  if (req.method === "OPTIONS") {
+    res.statusCode = 204;
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.end();
+    return;
+  }
+
   if (req.method !== "GET") {
     json(res, 405, { error: "Only GET supported" });
     return;
@@ -69,4 +81,3 @@ function main(): void {
 }
 
 main();
-

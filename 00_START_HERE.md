@@ -27,6 +27,10 @@
 8. Open in browser:
    - `http://localhost:8787/health`
    - `http://localhost:8787/feed?page=1&pageSize=20&sort=score`
+9. Start local web app in a second terminal:
+   - `npm run dev:web`
+10. Open:
+   - `http://localhost:3000`
 
 ## How to run multiple Codex agents
 1. Read `docs/ORCHESTRATION_PLAYBOOK.md`.

@@ -2,12 +2,12 @@
   "name": "@coasensus/web",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "scripts": {
-    "dev": "echo \"TODO: scaffold Next.js app in apps/web\"",
-    "build": "echo \"TODO: build web app\"",
-    "lint": "echo \"TODO: lint web app\"",
-    "typecheck": "echo \"TODO: typecheck web app\"",
-    "test": "echo \"TODO: test web app\""
+    "dev": "npm run build && node dist/server.js",
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint \"src/**/*.ts\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --pool=threads"
   }
 }
-
