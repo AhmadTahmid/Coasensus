@@ -54,3 +54,18 @@
 43. Diagnosed recurring CI deploy failure: worker step was using invalid Wrangler flag (`--log-level`) and exiting with help text.
 44. Added temporary annotation-based diagnostics, removed invalid flag, and confirmed `Deploy Cloudflare` workflow is now green.
 45. Added CI-specific Worker config (`wrangler.api.ci.jsonc`) to avoid route-management friction in automated deploy runs.
+46. Added Cloudflare-side Polymarket refresh pipeline in Worker (`refresh.ts`) and wired `/api/admin/refresh-feed`.
+47. Added automatic feed bootstrap on empty `curated_feed` and scheduled refresh handlers via cron triggers.
+48. Diagnosed and fixed D1 runtime issues in refresh path:
+   - removed problematic `AbortController` timeout flow in Worker runtime
+   - switched snapshot persistence to chunked `db.batch()` writes
+49. Hardened admin refresh route with `COASENSUS_ADMIN_REFRESH_TOKEN` support (`X-Admin-Token` / Bearer / query token).
+50. Set `COASENSUS_ADMIN_REFRESH_TOKEN` secrets for staging + production Workers.
+51. Improved curation quality:
+   - boundary-aware keyword matching (no raw substring matching)
+   - removed ambiguous `who` public-health keyword causing false positives
+   - added sports/entertainment exclusion tokens
+   - raised newsworthiness strictness (`newsworthinessThreshold=2`)
+52. Verified live refresh + feed population on both environments after tuning:
+   - production counts: total `800`, curated `214`, rejected `586`
+   - staging counts: total `800`, curated `214`, rejected `586`

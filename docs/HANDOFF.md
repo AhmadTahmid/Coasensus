@@ -24,6 +24,10 @@ This file is the explicit handoff checkpoint.
    - Cloudflare deploy pipeline scaffold: implemented (`.github/workflows/deploy-cloudflare.yml`)
    - First staging deploy: completed (Worker + D1 migration + Pages preview)
    - First production deploy: completed (Worker + D1 migration + Pages deployment)
+   - Cloudflare D1 feed refresh pipeline: implemented and live
+   - Manual refresh endpoint: implemented (`POST /api/admin/refresh-feed`)
+   - Scheduled refresh: implemented (staging every 30m, production every 15m)
+   - Admin refresh auth: protected by `COASENSUS_ADMIN_REFRESH_TOKEN` secret
 
 ## Known environment caveats
 1. Some sandbox contexts block process spawn for Vitest/Vite and `tsx`.
@@ -51,6 +55,14 @@ This file is the explicit handoff checkpoint.
 9. CI deploy workflow status:
    - Latest `Deploy Cloudflare` run is successful after fixing invalid worker deploy flag.
    - Root cause: `wrangler deploy` was invoked with unsupported `--log-level` option.
+10. Feed population checkpoint:
+   - `/api/feed` now returns non-empty curated markets in both environments.
+   - Latest verified live counts:
+     - Production: `800 total / 214 curated / 586 rejected`
+     - Staging: `800 total / 214 curated / 586 rejected`
+11. Curation tuning checkpoint:
+   - Removed false positives from substring matching (`who` keyword bug).
+   - Added stronger sports/entertainment exclusions and stricter news threshold.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

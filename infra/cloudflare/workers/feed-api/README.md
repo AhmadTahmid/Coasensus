@@ -5,7 +5,7 @@ Cloudflare Worker API for Coasensus.
 ## Routes
 1. `GET /api/health`
 2. `GET /api/feed?page=1&pageSize=20&sort=score`
-3. `POST /api/admin/refresh-feed` (manual ingestion refresh)
+3. `POST /api/admin/refresh-feed` (manual ingestion refresh; requires `X-Admin-Token` if `COASENSUS_ADMIN_REFRESH_TOKEN` secret is set)
 4. `POST /api/analytics`
 5. `GET /api/analytics?limit=50`
 

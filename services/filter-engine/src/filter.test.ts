@@ -71,5 +71,42 @@ describe("curateMarkets", () => {
     expect(rejected).toHaveLength(1);
     expect(rejected[0]?.decisionReason).toBe("excluded_below_threshold");
   });
-});
 
+  it("rejects sports tournament markets even when liquid", () => {
+    const { curated, rejected } = curateMarkets([
+      {
+        ...baseMarket,
+        id: "sports-1",
+        question: "Will Scottie Scheffler win the 2026 Masters tournament?",
+        description: "Golf futures market",
+        tags: ["golf", "masters"],
+        liquidity: 65000,
+        volume: 800000,
+        openInterest: 15000,
+      },
+    ]);
+
+    expect(curated).toHaveLength(0);
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0]?.decisionReason).toContain("excluded");
+  });
+
+  it("does not misclassify generic 'who' phrasing as public health", () => {
+    const { curated, rejected } = curateMarkets([
+      {
+        ...baseMarket,
+        id: "who-phrase-1",
+        question: "Who will win the spring city parade?",
+        description: "Local entertainment event",
+        tags: ["community"],
+        liquidity: 9000,
+        volume: 12000,
+        openInterest: 2500,
+      },
+    ]);
+
+    expect(curated).toHaveLength(0);
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0]?.score.category).toBe("other");
+  });
+});

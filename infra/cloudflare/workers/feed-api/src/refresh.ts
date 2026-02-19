@@ -137,9 +137,30 @@ const EXCLUSION_TOKENS = [
   "pepe",
   "gossip",
   "celebrity",
+  "james bond",
+  "oscar",
+  "grammy",
+  "box office",
+  "movie",
+  "tv show",
+  "super bowl",
+  "world cup",
+  "championship",
+  "tournament",
+  "masters",
+  "golf",
+  "tennis",
+  "formula 1",
+  "f1",
+  "basketball",
+  "football",
+  "baseball",
+  "hockey",
   "nba",
   "nfl",
   "soccer",
+  "mlb",
+  "nhl",
   "ufc",
   "crypto memecoin",
 ];
@@ -149,7 +170,7 @@ const CATEGORY_MAP: Record<MarketCategory, string[]> = {
   economy: ["inflation", "gdp", "recession", "unemployment", "federal reserve", "interest rate"],
   policy: ["bill", "law", "regulation", "policy", "court", "supreme court"],
   geopolitics: ["war", "conflict", "ceasefire", "sanction", "nato", "china", "russia", "taiwan"],
-  public_health: ["pandemic", "vaccine", "cdc", "who", "outbreak", "public health"],
+  public_health: ["pandemic", "vaccine", "cdc", "outbreak", "public health", "hospital", "epidemic"],
   climate_energy: ["climate", "emissions", "oil", "gas", "renewable", "energy", "carbon"],
   other: [],
 };
@@ -383,32 +404,58 @@ function toCorpus(market: Market): string {
   return `${market.question} ${market.description ?? ""} ${market.tags.join(" ")}`.toLowerCase();
 }
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function keywordPattern(keyword: string): RegExp {
+  const escaped = escapeRegex(keyword.toLowerCase()).replace(/\\\s+/g, "\\s+");
+  return new RegExp(`\\b${escaped}\\b`, "i");
+}
+
+function hasKeyword(corpus: string, keyword: string): boolean {
+  return keywordPattern(keyword).test(corpus);
+}
+
+function matchedKeywords(corpus: string, keywords: string[]): string[] {
+  return keywords.filter((keyword) => hasKeyword(corpus, keyword));
+}
+
 function isExcludedByToken(corpus: string): string | null {
-  const token = EXCLUSION_TOKENS.find((item) => corpus.includes(item));
+  const token = EXCLUSION_TOKENS.find((item) => hasKeyword(corpus, item));
   return token ? `excluded_${token.replace(/\s+/g, "_")}` : null;
 }
 
-function detectCategory(corpus: string): MarketCategory {
+function detectCategory(corpus: string): { category: MarketCategory; keywords: string[] } {
+  let bestCategory: MarketCategory = "other";
+  let bestKeywords: string[] = [];
+
   for (const [category, keywords] of Object.entries(CATEGORY_MAP) as [MarketCategory, string[]][]) {
     if (category === "other") {
       continue;
     }
-    if (keywords.some((keyword) => corpus.includes(keyword))) {
-      return category;
+    const matches = matchedKeywords(corpus, keywords);
+    if (matches.length > bestKeywords.length) {
+      bestCategory = category;
+      bestKeywords = matches;
     }
   }
-  return "other";
+
+  return { category: bestCategory, keywords: bestKeywords };
 }
 
 function scoreNewsworthiness(market: Market): number {
   let score = 0;
-  if ((market.volume ?? 0) >= 10000) {
+  if ((market.volume ?? 0) >= 25000) {
     score += 1;
   }
-  if ((market.liquidity ?? 0) >= 5000) {
+  if ((market.liquidity ?? 0) >= 10000) {
     score += 1;
   }
-  if ((market.openInterest ?? 0) >= 2500) {
+  if ((market.openInterest ?? 0) >= 5000) {
+    score += 1;
+  }
+  if ((market.volume ?? 0) >= 250000 || (market.liquidity ?? 0) >= 50000) {
     score += 1;
   }
 
@@ -424,39 +471,34 @@ function scoreNewsworthiness(market: Market): number {
   return score;
 }
 
-function scoreCivicRelevance(corpus: string, category: MarketCategory): number {
-  let score = 0;
-  const keywords = CATEGORY_MAP[category];
-
+function scoreCivicRelevance(category: MarketCategory, keywords: string[]): number {
   if (category !== "other") {
-    score += 1;
+    return 1 + keywords.length;
   }
-  for (const token of keywords) {
-    if (corpus.includes(token)) {
-      score += 1;
-    }
-  }
-  return score;
+  return 0;
 }
 
 function createScoreBreakdown(market: Market): MarketScoreBreakdown {
   const corpus = toCorpus(market);
-  const category = detectCategory(corpus);
-  const civicScore = scoreCivicRelevance(corpus, category);
+  const detected = detectCategory(corpus);
+  const civicScore = scoreCivicRelevance(detected.category, detected.keywords);
   const newsworthinessScore = scoreNewsworthiness(market);
   const reasonCodes: string[] = [];
 
-  if (category !== "other") {
-    reasonCodes.push(`category_${category}`);
+  if (detected.category !== "other") {
+    reasonCodes.push(`category_${detected.category}`);
+    for (const keyword of detected.keywords.slice(0, 2)) {
+      reasonCodes.push(`keyword_${keyword.replace(/\s+/g, "_")}`);
+    }
   }
-  if (newsworthinessScore > 0) {
+  if (newsworthinessScore >= 2) {
     reasonCodes.push("news_signal_volume_or_liquidity");
   }
 
   return {
     civicScore,
     newsworthinessScore,
-    category,
+    category: detected.category,
     reasonCodes,
   };
 }
@@ -465,7 +507,7 @@ function curateMarkets(markets: Market[]): CurationResult {
   const curated: CuratedFeedItem[] = [];
   const rejected: CuratedFeedItem[] = [];
   const civicThreshold = 2;
-  const newsThreshold = 1;
+  const newsThreshold = 2;
 
   for (const market of markets) {
     const corpus = toCorpus(market);
