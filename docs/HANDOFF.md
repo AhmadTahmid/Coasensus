@@ -23,6 +23,7 @@ This file is the explicit handoff checkpoint.
    - Cloudflare API worker scaffold: implemented (`infra/cloudflare/workers/feed-api`)
    - Cloudflare deploy pipeline scaffold: implemented (`.github/workflows/deploy-cloudflare.yml`)
    - First staging deploy: completed (Worker + D1 migration + Pages preview)
+   - First production deploy: completed (Worker + D1 migration + Pages deployment)
 
 ## Known environment caveats
 1. Some sandbox contexts block process spawn for Vitest/Vite and `tsx`.
@@ -38,6 +39,15 @@ This file is the explicit handoff checkpoint.
 5. Staging live endpoints checkpoint:
    - Worker health: `https://coasensus-api-staging.tahmidahmad1970.workers.dev/api/health`
    - Pages preview alias: `https://staging.coasensus-web.pages.dev`
+6. Production live endpoints checkpoint:
+   - Worker health: `https://coasensus-api.tahmidahmad1970.workers.dev/api/health`
+   - Pages deployment: `https://coasensus-web.pages.dev`
+7. Remaining blocker:
+   - Pages custom domains are attached but still `pending` with `CNAME record not set`
+   - Required DNS records listed in `infra/cloudflare/DNS_REQUIRED.md`
+8. Current deploy IDs:
+   - Staging Pages deploy: `d4db533e-c37c-40be-9e16-2d0d83958ed8`
+   - Production Pages deploy: `73b297ed-bdce-4db8-9cc0-85c5e3fa3ed1`
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

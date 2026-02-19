@@ -18,6 +18,13 @@ function resolveApiBase() {
     return "http://localhost:8787";
   }
 
+  if (host.endsWith(".coasensus-web.pages.dev")) {
+    if (host.startsWith("staging.")) {
+      return "https://coasensus-api-staging.tahmidahmad1970.workers.dev/api";
+    }
+    return "https://coasensus-api.tahmidahmad1970.workers.dev/api";
+  }
+
   // Production defaults to same-origin API route handled by Cloudflare Worker.
   return `${window.location.origin}/api`;
 }

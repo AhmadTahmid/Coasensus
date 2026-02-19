@@ -31,3 +31,14 @@
 28. Applied staging D1 migration (`0001_initial_schema.sql`) remotely.
 29. Deployed staging API Worker (`coasensus-api-staging`) with route `staging.coasensus.com/api/*`.
 30. Created Cloudflare Pages project (`coasensus-web`) and deployed staging preview branch.
+31. Applied production D1 migration (`0001_initial_schema.sql`) remotely.
+32. Deployed production API Worker (`coasensus-api`) with route `coasensus.com/api/*`.
+33. Deployed production Pages branch (`main`) to `coasensus-web.pages.dev`.
+34. Attached Pages custom domains (`coasensus.com`, `staging.coasensus.com`) via Cloudflare API.
+35. Captured DNS blocker: custom domains remain `pending` with `CNAME record not set`.
+36. Added Pages preview API fallback in web app for `*.coasensus-web.pages.dev`.
+37. Redeployed staging Pages branch with fallback update (`d4db533e`).
+38. Redeployed production Pages branch with fallback update (`73b297ed`).
+39. Confirmed API health checks return 200 on:
+   - `https://coasensus.com/api/health`
+   - `https://coasensus-api-staging.tahmidahmad1970.workers.dev/api/health`

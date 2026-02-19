@@ -31,8 +31,8 @@
 - [x] `INF-001` Configure staging + production environments
 - [x] `INF-002` Add Cloudflare deployment pipeline
 - [x] `INF-003` Add secret management checklist
-- [ ] `INF-004` Wire DNS for `coasensus.com`
-- [ ] `INF-005` Validate HTTPS and caching behavior
+- [ ] `INF-004` Wire DNS for `coasensus.com` (blocked: Pages custom domains show `CNAME record not set`)
+- [ ] `INF-005` Validate HTTPS and caching behavior (blocked pending `INF-004`)
 
 ## EPIC-05 QA + Reliability
 - [x] `QA-001` Add ingestion smoke checks

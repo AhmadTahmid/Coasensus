@@ -69,3 +69,12 @@ Behavior:
    - `staging.coasensus.com/api/*` for staging
 3. SSL:
    - Use Cloudflare-managed certificates (auto HTTPS).
+
+## Current status (2026-02-19)
+1. Custom domains were attached to Pages by API:
+   - `coasensus.com`
+   - `staging.coasensus.com`
+2. Domain validation is still `pending` with `CNAME record not set`.
+3. API routes are already live:
+   - `https://coasensus.com/api/health`
+   - `https://coasensus-api-staging.tahmidahmad1970.workers.dev/api/health`
