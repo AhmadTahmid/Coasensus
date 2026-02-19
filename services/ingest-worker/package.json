@@ -4,11 +4,13 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "echo \"TODO: run ingest worker in dev mode\"",
-    "build": "echo \"TODO: build ingest worker\"",
-    "lint": "echo \"TODO: lint ingest worker\"",
-    "typecheck": "echo \"TODO: typecheck ingest worker\"",
-    "test": "echo \"TODO: test ingest worker\""
+    "dev": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint \"src/**/*.ts\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@coasensus/shared-types": "file:../../packages/shared-types"
   }
 }
-

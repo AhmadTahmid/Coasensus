@@ -4,11 +4,13 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "echo \"TODO: run filter engine in dev mode\"",
-    "build": "echo \"TODO: build filter engine\"",
-    "lint": "echo \"TODO: lint filter engine\"",
-    "typecheck": "echo \"TODO: typecheck filter engine\"",
-    "test": "echo \"TODO: test filter engine\""
+    "dev": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint \"src/**/*.ts\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@coasensus/shared-types": "file:../../packages/shared-types"
   }
 }
-

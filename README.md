@@ -8,6 +8,10 @@ The goal is to keep civic-impact and newsworthy markets while removing meme/nois
 - Main execution plan: `COASENSUS_EXECUTION_PLAN.md`
 - Beginner runbook: `00_START_HERE.md`
 - Agent orchestration guide: `docs/ORCHESTRATION_PLAYBOOK.md`
+- Foundation checks now run with:
+  - TypeScript typecheck
+  - ESLint lint
+  - Vitest unit tests (ingest + filter services)
 
 ## Monorepo layout
 ```text
@@ -20,3 +24,8 @@ infra/db                # database schema and migrations
 docs/                   # planning, runbooks, decisions
 ```
 
+## Useful commands
+```bash
+npm install
+npm run check
+```

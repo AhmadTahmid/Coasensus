@@ -9,7 +9,7 @@
     "packages/*"
   ],
   "scripts": {
-    "check": "npm run --workspaces --if-present check",
+    "check": "npm run typecheck && npm run lint && npm run test",
     "build": "npm run --workspaces --if-present build",
     "lint": "npm run --workspaces --if-present lint",
     "test": "npm run --workspaces --if-present test",
@@ -19,6 +19,12 @@
     "dev:filter": "npm run --workspace @coasensus/filter-engine dev"
   },
   "devDependencies": {
-    "typescript": "^5.6.3"
+    "@eslint/js": "^9.22.0",
+    "@types/node": "^22.13.10",
+    "eslint": "^9.22.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.26.0",
+    "vitest": "^3.0.8"
   }
 }
