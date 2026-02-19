@@ -101,13 +101,13 @@ jobs:
           upsert_cname "staging.coasensus.com" "coasensus-web.pages.dev"
 
       - name: Apply D1 migrations
-        run: npx wrangler d1 migrations apply coasensus-production --remote --config infra/cloudflare/wrangler.api.jsonc --env production
+        run: npx wrangler d1 migrations apply coasensus-production --remote --config infra/cloudflare/wrangler.api.ci.jsonc --env production
 
       - name: Cloudflare auth summary
         run: npx wrangler whoami
 
       - name: Deploy API Worker
-        run: npx wrangler deploy --config infra/cloudflare/wrangler.api.jsonc --env production --log-level debug
+        run: npx wrangler deploy --config infra/cloudflare/wrangler.api.ci.jsonc --env production --log-level debug
 
       - name: Deploy Pages
         run: npx wrangler pages deploy apps/web/public --project-name coasensus-web --branch main

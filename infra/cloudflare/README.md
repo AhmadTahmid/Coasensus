@@ -19,6 +19,7 @@ This folder is the deploy scaffold for Coasensus on Cloudflare.
 3. `workers/feed-api/src/index.ts`: Worker API entrypoint.
 4. `ENVIRONMENT_MATRIX.md`: staging/production mapping.
 5. `SECRETS_CHECKLIST.md`: secret setup and safety checklist.
+6. `wrangler.api.ci.jsonc`: CI deploy config (same worker names + D1 bindings, no route management).
 
 ## One-time setup checklist
 1. Install/upgrade Wrangler:
