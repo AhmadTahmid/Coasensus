@@ -22,6 +22,7 @@ This file is the explicit handoff checkpoint.
    - Web UI cards: implemented (`apps/web`)
    - Cloudflare API worker scaffold: implemented (`infra/cloudflare/workers/feed-api`)
    - Cloudflare deploy pipeline scaffold: implemented (`.github/workflows/deploy-cloudflare.yml`)
+   - First staging deploy: completed (Worker + D1 migration + Pages preview)
 
 ## Known environment caveats
 1. Some sandbox contexts block process spawn for Vitest/Vite and `tsx`.
@@ -34,6 +35,9 @@ This file is the explicit handoff checkpoint.
 4. Cloudflare deploy requires real credentials and IDs:
    - replace `database_id` placeholders in `infra/cloudflare/wrangler.api.jsonc`
    - set GitHub secrets (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`)
+5. Staging live endpoints checkpoint:
+   - Worker health: `https://coasensus-api-staging.tahmidahmad1970.workers.dev/api/health`
+   - Pages preview alias: `https://staging.coasensus-web.pages.dev`
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

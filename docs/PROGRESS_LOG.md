@@ -27,3 +27,7 @@
 24. Added baseline D1 SQL migration at `infra/db/migrations/0001_initial_schema.sql`.
 25. Added GitHub Actions Cloudflare deploy workflow (`deploy-cloudflare.yml`).
 26. Added noob-friendly Cloudflare setup + secrets runbooks.
+27. Updated Cloudflare API config with real D1 IDs for staging and production.
+28. Applied staging D1 migration (`0001_initial_schema.sql`) remotely.
+29. Deployed staging API Worker (`coasensus-api-staging`) with route `staging.coasensus.com/api/*`.
+30. Created Cloudflare Pages project (`coasensus-web`) and deployed staging preview branch.

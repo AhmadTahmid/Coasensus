@@ -29,7 +29,7 @@
         {
           "binding": "DB",
           "database_name": "coasensus-staging",
-          "database_id": "REPLACE_WITH_STAGING_DB_ID",
+          "database_id": "2ddd58f3-8fa4-472f-b596-6c45d320d923",
           "migrations_dir": "../db/migrations"
         }
       ]
@@ -50,7 +50,7 @@
         {
           "binding": "DB",
           "database_name": "coasensus-production",
-          "database_id": "REPLACE_WITH_PRODUCTION_DB_ID",
+          "database_id": "89d18a79-5579-4e8e-9e5c-92389f4bc44a",
           "migrations_dir": "../db/migrations"
         }
       ]
