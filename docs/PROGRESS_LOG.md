@@ -42,3 +42,12 @@
 39. Confirmed API health checks return 200 on:
    - `https://coasensus.com/api/health`
    - `https://coasensus-api-staging.tahmidahmad1970.workers.dev/api/health`
+40. Added deploy workflow DNS upsert automation and fixed push-event execution issues.
+41. DNS CNAME validation moved from `pending` to `active` for:
+   - `coasensus.com`
+   - `staging.coasensus.com`
+42. Verified custom-domain web + API health:
+   - `https://coasensus.com` => `200`
+   - `https://staging.coasensus.com` => `200`
+   - `https://coasensus.com/api/health` => `200`
+   - `https://staging.coasensus.com/api/health` => `200`

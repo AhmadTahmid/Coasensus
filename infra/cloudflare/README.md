@@ -74,7 +74,7 @@ Behavior:
 1. Custom domains were attached to Pages by API:
    - `coasensus.com`
    - `staging.coasensus.com`
-2. Domain validation is still `pending` with `CNAME record not set`.
-3. API routes are already live:
+2. Domain validation is `active` for both domains.
+3. API routes are live:
    - `https://coasensus.com/api/health`
    - `https://coasensus-api-staging.tahmidahmad1970.workers.dev/api/health`

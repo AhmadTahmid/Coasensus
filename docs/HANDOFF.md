@@ -42,9 +42,9 @@ This file is the explicit handoff checkpoint.
 6. Production live endpoints checkpoint:
    - Worker health: `https://coasensus-api.tahmidahmad1970.workers.dev/api/health`
    - Pages deployment: `https://coasensus-web.pages.dev`
-7. Remaining blocker:
-   - Pages custom domains are attached but still `pending` with `CNAME record not set`
-   - Required DNS records listed in `infra/cloudflare/DNS_REQUIRED.md`
+7. Pages custom domains are active:
+   - `https://coasensus.com`
+   - `https://staging.coasensus.com`
 8. Current deploy IDs:
    - Staging Pages deploy: `d4db533e-c37c-40be-9e16-2d0d83958ed8`
    - Production Pages deploy: `73b297ed-bdce-4db8-9cc0-85c5e3fa3ed1`
