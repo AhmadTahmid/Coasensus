@@ -110,7 +110,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          npx wrangler deploy --config infra/cloudflare/wrangler.api.ci.jsonc --env production --log-level debug > worker-deploy.log 2>&1
+          npx wrangler deploy --config infra/cloudflare/wrangler.api.ci.jsonc --env production > worker-deploy.log 2>&1
           code=$?
           cat worker-deploy.log
           if [[ $code -ne 0 ]]; then
