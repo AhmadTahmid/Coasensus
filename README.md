@@ -16,6 +16,11 @@ The goal is to keep civic-impact and newsworthy markets while removing meme/nois
 - Ingestion persistence supports:
   - JSON snapshots in `infra/db/local`
   - SQLite DB in `infra/db/coasensus.sqlite`
+- Cloudflare deployment scaffolding now includes:
+  - API Worker config + source in `infra/cloudflare`
+  - Pages deploy config
+  - D1 migration baseline in `infra/db/migrations`
+  - GitHub Actions deploy workflow in `.github/workflows/deploy-cloudflare.yml`
 
 ## Monorepo layout
 ```text

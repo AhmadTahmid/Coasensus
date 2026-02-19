@@ -1,0 +1,13 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "coasensus-web",
+  "pages_build_output_dir": "../../apps/web/public",
+  "compatibility_date": "2026-02-19",
+  "env": {
+    "preview": {
+      "vars": {
+        "COASENSUS_ENV": "preview"
+      }
+    }
+  }
+}

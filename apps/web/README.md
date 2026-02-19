@@ -11,7 +11,8 @@ Local frontend for the Coasensus feed/cards experience.
    - `http://localhost:3000`
 
 ## Runtime behavior
-1. The app calls `http://localhost:8787/feed` by default.
-2. Use controls to sort, filter by category, and include rejected markets.
-3. The UI is mobile/desktop responsive and card-based.
-4. Basic analytics events are sent to `POST http://localhost:8787/analytics`.
+1. In local mode (`localhost`), app calls `http://localhost:8787/feed` by default.
+2. In non-local environments, app defaults to same-origin API at `/api/feed`.
+3. Use controls to sort, filter by category, and include rejected markets.
+4. The UI is mobile/desktop responsive and card-based.
+5. Basic analytics events are sent to `/analytics` on the selected API base.

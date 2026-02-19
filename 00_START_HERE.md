@@ -52,3 +52,21 @@
 2. I can add DB persistence for fetched and normalized markets.
 3. I can scaffold filter engine with tests.
 4. I can prepare Cloudflare deployment config next.
+
+## Cloudflare quickstart (new)
+1. Read:
+   - `infra/cloudflare/README.md`
+   - `infra/cloudflare/SECRETS_CHECKLIST.md`
+2. Login:
+   - `npx wrangler login`
+   - `npx wrangler whoami`
+3. Create D1 DBs:
+   - `npx wrangler d1 create coasensus-staging`
+   - `npx wrangler d1 create coasensus-production`
+4. Put real DB IDs into:
+   - `infra/cloudflare/wrangler.api.jsonc`
+5. Apply migrations:
+   - `npx wrangler d1 migrations apply coasensus-staging --remote --config infra/cloudflare/wrangler.api.jsonc --env staging`
+6. Deploy API + web:
+   - `npx wrangler deploy --config infra/cloudflare/wrangler.api.jsonc --env staging`
+   - `npx wrangler pages deploy apps/web/public --project-name coasensus-web --branch staging`

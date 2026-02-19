@@ -22,3 +22,8 @@
 19. Added structured ingest smoke logs with timing metrics.
 20. Added feed API storage mode switch (`json` or `sqlite`).
 21. Added basic web analytics events + API ingestion (`POST /analytics`).
+22. Added Cloudflare API Worker scaffold with D1-backed `/api/feed` + `/api/analytics` routes.
+23. Added Cloudflare config files for staging/production (`wrangler.api.jsonc`, `wrangler.pages.jsonc`).
+24. Added baseline D1 SQL migration at `infra/db/migrations/0001_initial_schema.sql`.
+25. Added GitHub Actions Cloudflare deploy workflow (`deploy-cloudflare.yml`).
+26. Added noob-friendly Cloudflare setup + secrets runbooks.

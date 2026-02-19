@@ -7,7 +7,22 @@ const state = {
   totalPages: 1,
 };
 
-const API_BASE = window.COASENSUS_API_BASE || "http://localhost:8787";
+function resolveApiBase() {
+  if (typeof window.COASENSUS_API_BASE === "string" && window.COASENSUS_API_BASE.trim()) {
+    return window.COASENSUS_API_BASE.trim();
+  }
+
+  const host = window.location.hostname;
+  const isLocalhost = host === "localhost" || host === "127.0.0.1";
+  if (isLocalhost) {
+    return "http://localhost:8787";
+  }
+
+  // Production defaults to same-origin API route handled by Cloudflare Worker.
+  return `${window.location.origin}/api`;
+}
+
+const API_BASE = resolveApiBase();
 const SESSION_KEY = "coasensus_session_id";
 let trackedInitialView = false;
 

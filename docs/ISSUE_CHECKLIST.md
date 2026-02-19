@@ -28,9 +28,9 @@
 - [x] `WEB-005` Add basic analytics events
 
 ## EPIC-04 Infra + Deploy
-- [ ] `INF-001` Configure staging + production environments
-- [ ] `INF-002` Add Cloudflare deployment pipeline
-- [ ] `INF-003` Add secret management checklist
+- [x] `INF-001` Configure staging + production environments
+- [x] `INF-002` Add Cloudflare deployment pipeline
+- [x] `INF-003` Add secret management checklist
 - [ ] `INF-004` Wire DNS for `coasensus.com`
 - [ ] `INF-005` Validate HTTPS and caching behavior
 

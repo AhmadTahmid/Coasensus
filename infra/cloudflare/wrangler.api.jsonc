@@ -1,0 +1,59 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "coasensus-api",
+  "main": "./workers/feed-api/src/index.ts",
+  "compatibility_date": "2026-02-19",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "vars": {
+    "COASENSUS_APP_ORIGIN": "http://localhost:3000",
+    "COASENSUS_DEFAULT_PAGE_SIZE": "20"
+  },
+  "env": {
+    "staging": {
+      "name": "coasensus-api-staging",
+      "routes": [
+        {
+          "pattern": "staging.coasensus.com/api/*",
+          "zone_name": "coasensus.com"
+        }
+      ],
+      "vars": {
+        "COASENSUS_APP_ORIGIN": "https://staging.coasensus.com",
+        "COASENSUS_DEFAULT_PAGE_SIZE": "20"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "coasensus-staging",
+          "database_id": "REPLACE_WITH_STAGING_DB_ID",
+          "migrations_dir": "../db/migrations"
+        }
+      ]
+    },
+    "production": {
+      "name": "coasensus-api",
+      "routes": [
+        {
+          "pattern": "coasensus.com/api/*",
+          "zone_name": "coasensus.com"
+        }
+      ],
+      "vars": {
+        "COASENSUS_APP_ORIGIN": "https://coasensus.com",
+        "COASENSUS_DEFAULT_PAGE_SIZE": "20"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "coasensus-production",
+          "database_id": "REPLACE_WITH_PRODUCTION_DB_ID",
+          "migrations_dir": "../db/migrations"
+        }
+      ]
+    }
+  }
+}
