@@ -12,6 +12,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_ZONE_ID: e243e9cbce0e1ff20c616958d5425f8a
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,13 +33,7 @@ jobs:
           AUTH_HEADER="Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"
           JSON_HEADER="Content-Type: application/json"
 
-          zone_id="$(
-            curl -sS \
-              -H "${AUTH_HEADER}" \
-              -H "${JSON_HEADER}" \
-              "${API}/zones?name=coasensus.com&account.id=${CLOUDFLARE_ACCOUNT_ID}" \
-            | jq -r '.result[0].id // empty'
-          )"
+          zone_id="${CLOUDFLARE_ZONE_ID}"
 
           if [[ -z "${zone_id}" ]]; then
             echo "Unable to resolve zone id for coasensus.com"
@@ -57,14 +52,6 @@ jobs:
                 "${API}/zones/${zone_id}/dns_records?name=${fqdn}"
             )"
 
-            local incompatible
-            incompatible="$(echo "${response}" | jq -r '[.result[] | select(.type != "A" and .type != "AAAA" and .type != "CNAME")] | length')"
-            if [[ "${incompatible}" != "0" ]]; then
-              echo "Found incompatible existing DNS records for ${fqdn}; refusing automatic replacement."
-              echo "${response}" | jq -r '.result[] | {id, type, name, content}'
-              exit 1
-            fi
-
             echo "${response}" | jq -c '.result[] | select(.type == "A" or .type == "AAAA")' | while read -r record; do
               id="$(echo "${record}" | jq -r '.id')"
               curl -sS -X DELETE \
@@ -76,6 +63,16 @@ jobs:
 
             local cname_id
             cname_id="$(echo "${response}" | jq -r '.result[] | select(.type == "CNAME") | .id' | head -n1)"
+            echo "${response}" | jq -r '.result[] | select(.type == "CNAME") | .id' | tail -n +2 | while read -r extra_id; do
+              if [[ -n "${extra_id}" ]]; then
+                curl -sS -X DELETE \
+                  -H "${AUTH_HEADER}" \
+                  -H "${JSON_HEADER}" \
+                  "${API}/zones/${zone_id}/dns_records/${extra_id}" \
+                | jq -e '.success == true' > /dev/null
+              fi
+            done
+
             local payload
             payload="$(jq -n \
               --arg type "CNAME" \
