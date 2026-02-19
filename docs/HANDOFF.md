@@ -48,6 +48,9 @@ This file is the explicit handoff checkpoint.
 8. Current deploy IDs:
    - Staging Pages deploy: `d4db533e-c37c-40be-9e16-2d0d83958ed8`
    - Production Pages deploy: `73b297ed-bdce-4db8-9cc0-85c5e3fa3ed1`
+9. CI deploy workflow status:
+   - Latest `Deploy Cloudflare` run is successful after fixing invalid worker deploy flag.
+   - Root cause: `wrangler deploy` was invoked with unsupported `--log-level` option.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

@@ -51,3 +51,6 @@
    - `https://staging.coasensus.com` => `200`
    - `https://coasensus.com/api/health` => `200`
    - `https://staging.coasensus.com/api/health` => `200`
+43. Diagnosed recurring CI deploy failure: worker step was using invalid Wrangler flag (`--log-level`) and exiting with help text.
+44. Added temporary annotation-based diagnostics, removed invalid flag, and confirmed `Deploy Cloudflare` workflow is now green.
+45. Added CI-specific Worker config (`wrangler.api.ci.jsonc`) to avoid route-management friction in automated deploy runs.
