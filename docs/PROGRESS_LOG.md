@@ -6,4 +6,4 @@
 3. Added beginner runbook and orchestration docs.
 4. Added shared market type contracts.
 5. Added agent prompts and commit policy.
-
+6. Added execution issue checklist for parallel agents.
