@@ -11,3 +11,14 @@ Responsible for pulling active Polymarket markets, handling retries, and normali
 - `POLYMARKET_MAX_PAGES` (default: `2`)
 - `POLYMARKET_RETRIES` (default: `2`)
 - `POLYMARKET_TIMEOUT_MS` (default: `12000`)
+- `INGEST_OUTPUT_DIR` (default: `infra/db/local`)
+- `INGEST_PERSIST` (default: `1`; set `0` to skip disk writes)
+
+## Persistence outputs
+Each persisted run writes:
+- `infra/db/local/snapshots/<run-id>.json`
+- `infra/db/local/raw/<run-id>.json`
+- `infra/db/local/normalized/<run-id>.json`
+- `infra/db/local/latest/snapshot.json`
+- `infra/db/local/latest/raw.json`
+- `infra/db/local/latest/normalized.json`

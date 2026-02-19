@@ -1,4 +1,4 @@
-import { runIngestionOnce } from "./index.js";
+import { runAndPersistIngestion, runIngestionOnce } from "./index.js";
 
 function parseEnvInt(name: string, fallback: number): number {
   const value = process.env[name];
@@ -14,13 +14,19 @@ async function main(): Promise<void> {
   const maxPages = parseEnvInt("POLYMARKET_MAX_PAGES", 2);
   const retries = parseEnvInt("POLYMARKET_RETRIES", 2);
   const requestTimeoutMs = parseEnvInt("POLYMARKET_TIMEOUT_MS", 12000);
+  const outputDir = process.env.INGEST_OUTPUT_DIR;
+  const shouldPersist = process.env.INGEST_PERSIST !== "0";
 
-  const result = await runIngestionOnce({
+  const fetchOptions = {
     limitPerPage,
     maxPages,
     retries,
     requestTimeoutMs,
-  });
+  };
+
+  const result = shouldPersist
+    ? await runAndPersistIngestion(fetchOptions, { outputDir })
+    : await runIngestionOnce(fetchOptions);
 
   const preview = result.normalizedMarkets.slice(0, 5).map((market, index) => ({
     rank: index + 1,
@@ -37,6 +43,7 @@ async function main(): Promise<void> {
       {
         smoke: "ok",
         snapshot: result.snapshot,
+        persisted: result.persisted ?? null,
         preview,
       },
       null,
@@ -58,4 +65,3 @@ main().catch((error) => {
   );
   process.exit(1);
 });
-

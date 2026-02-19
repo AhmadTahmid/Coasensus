@@ -9,7 +9,7 @@
 ## EPIC-01 Polymarket Ingestion
 - [x] `ING-001` Build active market API client adapter
 - [x] `ING-002` Add normalization mapper -> canonical `Market`
-- [ ] `ING-003` Persist raw payloads + normalized records
+- [x] `ING-003` Persist raw payloads + normalized records
 - [x] `ING-004` Add retries, timeout, and backoff policy
 - [ ] `ING-005` Add ingestion metrics and success/failure logs
 

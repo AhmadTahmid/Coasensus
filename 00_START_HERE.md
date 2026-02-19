@@ -18,6 +18,10 @@
    - `npm run smoke:ingest`
 5. Optional tuning for smoke run:
    - `POLYMARKET_LIMIT_PER_PAGE=100 POLYMARKET_MAX_PAGES=3 npm run smoke:ingest`
+6. Check persisted output files:
+   - `infra/db/local/latest/snapshot.json`
+   - `infra/db/local/latest/raw.json`
+   - `infra/db/local/latest/normalized.json`
 
 ## How to run multiple Codex agents
 1. Read `docs/ORCHESTRATION_PLAYBOOK.md`.

@@ -13,3 +13,4 @@
 10. Added live Polymarket API client with pagination, timeout, retries, and backoff.
 11. Added ingestion run helper (`runIngestionOnce`) and local smoke script.
 12. Validated live smoke run against Polymarket (`rawCount: 100`, `normalizedCount: 100`).
+13. Added local persistence for raw + normalized + snapshot artifacts under `infra/db/local`.
