@@ -14,3 +14,4 @@ Local frontend for the Coasensus feed/cards experience.
 1. The app calls `http://localhost:8787/feed` by default.
 2. Use controls to sort, filter by category, and include rejected markets.
 3. The UI is mobile/desktop responsive and card-based.
+4. Basic analytics events are sent to `POST http://localhost:8787/analytics`.

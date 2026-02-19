@@ -8,6 +8,8 @@ const state = {
 };
 
 const API_BASE = window.COASENSUS_API_BASE || "http://localhost:8787";
+const SESSION_KEY = "coasensus_session_id";
+let trackedInitialView = false;
 
 const el = {
   feed: document.getElementById("feed"),
@@ -21,6 +23,51 @@ const el = {
   prev: document.getElementById("prev"),
   next: document.getElementById("next"),
 };
+
+function getSessionId() {
+  try {
+    const cached = window.localStorage.getItem(SESSION_KEY);
+    if (cached) return cached;
+    const value =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.floor(Math.random() * 1e9)}`;
+    window.localStorage.setItem(SESSION_KEY, value);
+    return value;
+  } catch {
+    return `${Date.now()}-${Math.floor(Math.random() * 1e9)}`;
+  }
+}
+
+const sessionId = getSessionId();
+
+function track(event, details = {}) {
+  const payload = {
+    event,
+    source: "web",
+    sessionId,
+    pageUrl: window.location.href,
+    details,
+  };
+
+  const body = JSON.stringify(payload);
+  const endpoint = `${API_BASE}/analytics`;
+
+  if (navigator.sendBeacon) {
+    const blob = new Blob([body], { type: "application/json" });
+    navigator.sendBeacon(endpoint, blob);
+    return;
+  }
+
+  fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+    keepalive: true,
+  }).catch(() => {
+    // Analytics is best-effort and should never block UI behavior.
+  });
+}
 
 function toNumber(value) {
   const num = Number(value);
@@ -102,7 +149,15 @@ function renderCards(items) {
             <span><strong>Decision:</strong> ${item.decisionReason}</span>
           </div>
           <div class="actions">
-            <a href="${item.url}" target="_blank" rel="noreferrer">Open on Polymarket</a>
+            <a
+              class="market-link"
+              data-market-id="${item.id}"
+              data-market-question="${encodeURIComponent(item.question)}"
+              data-market-category="${item.score?.category || "other"}"
+              href="${item.url}"
+              target="_blank"
+              rel="noreferrer"
+            >Open on Polymarket</a>
           </div>
         </article>
       `;
@@ -139,6 +194,22 @@ async function loadFeed() {
     renderCards(data.items || []);
     setStatus(`Updated at ${new Date().toLocaleTimeString()}`);
     syncControls();
+    track("feed_loaded", {
+      page: state.page,
+      pageSize: state.pageSize,
+      sort: state.sort,
+      category: state.category || "all",
+      includeRejected: state.includeRejected,
+      totalItems: data.meta?.totalItems ?? 0,
+      itemCount: Array.isArray(data.items) ? data.items.length : 0,
+    });
+    if (!trackedInitialView) {
+      trackedInitialView = true;
+      track("page_view", {
+        path: window.location.pathname,
+        query: window.location.search,
+      });
+    }
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     setStatus(`Failed to load feed: ${detail}`);
@@ -154,36 +225,51 @@ async function loadFeed() {
 el.sort.addEventListener("change", () => {
   state.page = 1;
   state.sort = el.sort.value;
+  track("sort_changed", { sort: state.sort });
   void loadFeed();
 });
 
 el.category.addEventListener("change", () => {
   state.page = 1;
   state.category = el.category.value;
+  track("category_changed", { category: state.category || "all" });
   void loadFeed();
 });
 
 el.includeRejected.addEventListener("change", () => {
   state.page = 1;
   state.includeRejected = el.includeRejected.checked;
+  track("include_rejected_toggled", { includeRejected: state.includeRejected });
   void loadFeed();
 });
 
 el.refresh.addEventListener("click", () => {
+  track("refresh_clicked");
   void loadFeed();
 });
 
 el.prev.addEventListener("click", () => {
   if (state.page <= 1) return;
   state.page -= 1;
+  track("pagination_previous", { page: state.page });
   void loadFeed();
 });
 
 el.next.addEventListener("click", () => {
   if (state.page >= state.totalPages) return;
   state.page += 1;
+  track("pagination_next", { page: state.page });
   void loadFeed();
 });
 
-void loadFeed();
+el.feed.addEventListener("click", (event) => {
+  const link = event.target.closest("a.market-link");
+  if (!link) return;
+  track("market_clicked", {
+    marketId: link.dataset.marketId || "",
+    category: link.dataset.marketCategory || "other",
+    question: decodeURIComponent(link.dataset.marketQuestion || ""),
+  });
+});
 
+void loadFeed();

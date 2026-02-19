@@ -33,6 +33,25 @@ export interface SqliteLatestMarketsResult {
   markets: Market[];
 }
 
+export interface PersistAnalyticsEventInput {
+  event: string;
+  source?: string;
+  sessionId?: string;
+  pageUrl?: string;
+  details?: Record<string, unknown>;
+  ts?: string;
+}
+
+export interface StoredAnalyticsEvent {
+  id: number;
+  ts: string;
+  event: string;
+  source: string;
+  sessionId: string | null;
+  pageUrl: string | null;
+  details: Record<string, unknown>;
+}
+
 function toRunId(isoDate: string): string {
   return isoDate.replace(/[:.]/g, "-");
 }
@@ -85,6 +104,19 @@ function initSchema(db: DatabaseSync): void {
 
     CREATE INDEX IF NOT EXISTS idx_markets_normalized_run ON markets_normalized(run_id);
     CREATE INDEX IF NOT EXISTS idx_markets_normalized_volume ON markets_normalized(volume);
+
+    CREATE TABLE IF NOT EXISTS analytics_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ts TEXT NOT NULL,
+      event TEXT NOT NULL,
+      source TEXT NOT NULL,
+      session_id TEXT,
+      page_url TEXT,
+      details_json TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_analytics_events_ts ON analytics_events(ts);
+    CREATE INDEX IF NOT EXISTS idx_analytics_events_event ON analytics_events(event);
   `);
 }
 
@@ -229,5 +261,104 @@ export async function loadLatestNormalizedMarketsSqlite(
   }
 }
 
-export { DEFAULT_SQLITE_DB_PATH };
+function parseDetails(value: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    return {};
+  } catch {
+    return {};
+  }
+}
 
+export async function persistAnalyticsEventSqlite(
+  input: PersistAnalyticsEventInput,
+  options: PersistSqliteOptions = {}
+): Promise<StoredAnalyticsEvent> {
+  const dbPath = resolve(options.dbPath ?? DEFAULT_SQLITE_DB_PATH);
+  await mkdir(dirname(dbPath), { recursive: true });
+  const db = new DatabaseSync(dbPath);
+
+  try {
+    initSchema(db);
+    const ts = input.ts ?? new Date().toISOString();
+    const source = (input.source ?? "web").trim() || "web";
+    const event = input.event.trim();
+    const details = input.details ?? {};
+
+    const insert = db.prepare(`
+      INSERT INTO analytics_events (ts, event, source, session_id, page_url, details_json)
+      VALUES (?, ?, ?, ?, ?, ?)
+      RETURNING id
+    `);
+
+    const row = insert.get(
+      ts,
+      event,
+      source,
+      input.sessionId ?? null,
+      input.pageUrl ?? null,
+      JSON.stringify(details)
+    ) as { id: number };
+
+    return {
+      id: row.id,
+      ts,
+      event,
+      source,
+      sessionId: input.sessionId ?? null,
+      pageUrl: input.pageUrl ?? null,
+      details,
+    };
+  } finally {
+    db.close();
+  }
+}
+
+export async function listAnalyticsEventsSqlite(
+  limit = 50,
+  options: PersistSqliteOptions = {}
+): Promise<StoredAnalyticsEvent[]> {
+  const dbPath = resolve(options.dbPath ?? DEFAULT_SQLITE_DB_PATH);
+  await mkdir(dirname(dbPath), { recursive: true });
+  const db = new DatabaseSync(dbPath);
+
+  try {
+    initSchema(db);
+    const safeLimit = Math.min(200, Math.max(1, Math.floor(limit)));
+    const rows = db
+      .prepare(
+        `
+        SELECT id, ts, event, source, session_id, page_url, details_json
+        FROM analytics_events
+        ORDER BY id DESC
+        LIMIT ?
+      `
+      )
+      .all(safeLimit) as Array<{
+      id: number;
+      ts: string;
+      event: string;
+      source: string;
+      session_id: string | null;
+      page_url: string | null;
+      details_json: string;
+    }>;
+
+    return rows.map((row) => ({
+      id: row.id,
+      ts: row.ts,
+      event: row.event,
+      source: row.source,
+      sessionId: row.session_id,
+      pageUrl: row.page_url,
+      details: parseDetails(row.details_json),
+    }));
+  } finally {
+    db.close();
+  }
+}
+
+export { DEFAULT_SQLITE_DB_PATH };

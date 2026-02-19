@@ -16,10 +16,13 @@ Routes:
 - `GET /feed?page=1&pageSize=20&sort=score`
 - `GET /feed?page=1&pageSize=20&sort=volume`
 - `GET /feed?page=1&pageSize=20&sort=endDate&category=policy`
+- `POST /analytics` (ingest web analytics event)
+- `GET /analytics?limit=50` (recent analytics events)
 
 Storage mode options:
 - `FEED_STORAGE_MODE=json` (default, reads `infra/db/local/latest/normalized.json`)
 - `FEED_STORAGE_MODE=sqlite` (reads latest run from SQLite DB)
+- `FEED_ANALYTICS_DB_PATH` (optional analytics SQLite DB path override)
 
 ## Smoke-test environment knobs
 - `POLYMARKET_LIMIT_PER_PAGE` (default: `50`)

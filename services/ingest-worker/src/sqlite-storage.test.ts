@@ -2,7 +2,12 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { loadLatestNormalizedMarketsSqlite, persistIngestionRunSqlite } from "./sqlite-storage.js";
+import {
+  listAnalyticsEventsSqlite,
+  loadLatestNormalizedMarketsSqlite,
+  persistAnalyticsEventSqlite,
+  persistIngestionRunSqlite,
+} from "./sqlite-storage.js";
 
 const tempPaths: string[] = [];
 
@@ -61,5 +66,29 @@ describe("sqlite persistence", () => {
     expect(loaded.markets).toHaveLength(1);
     expect(loaded.markets[0]?.id).toBe("norm-1");
   });
-});
 
+  it("stores and lists analytics events", async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), "coasensus-analytics-"));
+    tempPaths.push(tmpDir);
+    const dbPath = path.join(tmpDir, "coasensus.sqlite");
+
+    const stored = await persistAnalyticsEventSqlite(
+      {
+        event: "page_view",
+        source: "web",
+        sessionId: "session-1",
+        pageUrl: "http://localhost:3000",
+        details: { page: "home" },
+      },
+      { dbPath }
+    );
+
+    expect(stored.id).toBeGreaterThan(0);
+    expect(stored.event).toBe("page_view");
+
+    const events = await listAnalyticsEventsSqlite(10, { dbPath });
+    expect(events).toHaveLength(1);
+    expect(events[0]?.event).toBe("page_view");
+    expect(events[0]?.details.page).toBe("home");
+  });
+});

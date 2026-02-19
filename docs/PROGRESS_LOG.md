@@ -21,3 +21,4 @@
 18. Added dual persistence mode in ingest flow (JSON + SQLite).
 19. Added structured ingest smoke logs with timing metrics.
 20. Added feed API storage mode switch (`json` or `sqlite`).
+21. Added basic web analytics events + API ingestion (`POST /analytics`).
