@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { loadAndBuildFeed, normalizeFeedQuery } from "./feed-store.js";
+import { loadAndBuildFeedWithMode, normalizeFeedQuery } from "./feed-store.js";
 
 function json(res: ServerResponse, statusCode: number, payload: unknown): void {
   res.statusCode = statusCode;
@@ -23,6 +23,10 @@ function parsePort(): number {
   }
   const parsed = Number(raw);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 8787;
+}
+
+function parseStorageMode(): "json" | "sqlite" {
+  return process.env.FEED_STORAGE_MODE === "sqlite" ? "sqlite" : "json";
 }
 
 async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -51,14 +55,18 @@ async function handler(req: IncomingMessage, res: ServerResponse): Promise<void>
     try {
       const query = normalizeFeedQuery(url.searchParams);
       const sourcePath = process.env.INGEST_LATEST_NORMALIZED_PATH;
-      const feed = await loadAndBuildFeed(query, sourcePath);
+      const sqliteDbPath = process.env.INGEST_SQLITE_DB_PATH;
+      const feed = await loadAndBuildFeedWithMode(query, sourcePath, {
+        storageMode: parseStorageMode(),
+        sqliteDbPath,
+      });
       json(res, 200, feed);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       json(res, 503, {
         error: "Feed unavailable",
         detail: message,
-        hint: "Run `npm run smoke:ingest` first to generate latest normalized data.",
+        hint: "Run `npm run smoke:ingest` first to generate source data.",
       });
     }
     return;

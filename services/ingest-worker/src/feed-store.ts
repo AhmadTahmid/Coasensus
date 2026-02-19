@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { curateMarkets } from "@coasensus/filter-engine";
 import type { CuratedFeedItem, Market, MarketCategory } from "@coasensus/shared-types";
+import { loadLatestNormalizedMarketsSqlite } from "./sqlite-storage.js";
 
 const DEFAULT_LATEST_NORMALIZED_PATH = path.resolve(
   fileURLToPath(new URL("../../../infra/db/local/latest/normalized.json", import.meta.url))
@@ -19,6 +20,7 @@ const CATEGORY_SET = new Set<MarketCategory>([
 ]);
 
 export type FeedSort = "score" | "volume" | "liquidity" | "endDate";
+export type FeedStorageMode = "json" | "sqlite";
 
 export interface FeedQuery {
   page: number;
@@ -26,6 +28,11 @@ export interface FeedQuery {
   sort: FeedSort;
   category?: MarketCategory;
   includeRejected: boolean;
+}
+
+export interface FeedLoadOptions {
+  storageMode?: FeedStorageMode;
+  sqliteDbPath?: string;
 }
 
 export interface FeedResponse {
@@ -166,3 +173,17 @@ export async function loadAndBuildFeed(query: FeedQuery, sourcePath?: string): P
   return buildFeedFromMarkets(markets, query, resolvedSourcePath);
 }
 
+export async function loadAndBuildFeedWithMode(
+  query: FeedQuery,
+  sourcePath: string | undefined,
+  options: FeedLoadOptions = {}
+): Promise<FeedResponse> {
+  const mode = options.storageMode ?? "json";
+  if (mode === "sqlite") {
+    const sqlite = await loadLatestNormalizedMarketsSqlite({ dbPath: options.sqliteDbPath });
+    const marker = sqlite.runId ? `sqlite:${sqlite.dbPath}#${sqlite.runId}` : `sqlite:${sqlite.dbPath}`;
+    return buildFeedFromMarkets(sqlite.markets, query, marker);
+  }
+
+  return loadAndBuildFeed(query, sourcePath);
+}

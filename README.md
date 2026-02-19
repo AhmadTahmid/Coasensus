@@ -13,6 +13,9 @@ The goal is to keep civic-impact and newsworthy markets while removing meme/nois
   - TypeScript typecheck
   - ESLint lint
   - Vitest unit tests (ingest + filter services)
+- Ingestion persistence supports:
+  - JSON snapshots in `infra/db/local`
+  - SQLite DB in `infra/db/coasensus.sqlite`
 
 ## Monorepo layout
 ```text

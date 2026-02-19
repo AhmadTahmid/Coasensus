@@ -32,6 +32,9 @@
    - `npm run dev:web`
 10. Open:
    - `http://localhost:3000`
+11. Optional: use SQLite as feed source:
+   - `set FEED_STORAGE_MODE=sqlite`
+   - `npm run dev:feed-api`
 
 ## How to run multiple Codex agents
 1. Read `docs/ORCHESTRATION_PLAYBOOK.md`.

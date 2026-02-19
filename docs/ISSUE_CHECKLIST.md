@@ -11,7 +11,7 @@
 - [x] `ING-002` Add normalization mapper -> canonical `Market`
 - [x] `ING-003` Persist raw payloads + normalized records
 - [x] `ING-004` Add retries, timeout, and backoff policy
-- [ ] `ING-005` Add ingestion metrics and success/failure logs
+- [x] `ING-005` Add ingestion metrics and success/failure logs
 
 ## EPIC-02 Curation Engine
 - [x] `FLT-001` Add hard exclusion rules for meme/noise categories

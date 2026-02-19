@@ -12,7 +12,7 @@ This file is the explicit handoff checkpoint.
 5. `COASENSUS_EXECUTION_PLAN.md`
 
 ## Current checkpoint
-1. Last pushed commit: `41f26a9`
+1. Last pushed commit: run `git log --oneline -n 1`
 2. Repo: `https://github.com/AhmadTahmid/Coasensus`
 3. Working branch: `main`
 4. Core stack status:

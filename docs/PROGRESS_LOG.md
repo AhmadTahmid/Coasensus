@@ -17,3 +17,7 @@
 14. Added local curated feed API (`/feed`) backed by latest persisted normalized data.
 15. Added local web feed UI with responsive cards wired to `/feed`.
 16. Added cross-origin support in feed API for local multi-port development.
+17. Added SQLite persistence module for ingestion runs (`infra/db/coasensus.sqlite` default).
+18. Added dual persistence mode in ingest flow (JSON + SQLite).
+19. Added structured ingest smoke logs with timing metrics.
+20. Added feed API storage mode switch (`json` or `sqlite`).
