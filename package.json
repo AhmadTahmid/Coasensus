@@ -1,0 +1,24 @@
+{
+  "name": "coasensus",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Coasensus monorepo",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "check": "npm run --workspaces --if-present check",
+    "build": "npm run --workspaces --if-present build",
+    "lint": "npm run --workspaces --if-present lint",
+    "test": "npm run --workspaces --if-present test",
+    "typecheck": "npm run --workspaces --if-present typecheck",
+    "dev:web": "npm run --workspace @coasensus/web dev",
+    "dev:ingest": "npm run --workspace @coasensus/ingest-worker dev",
+    "dev:filter": "npm run --workspace @coasensus/filter-engine dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

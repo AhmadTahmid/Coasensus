@@ -1,0 +1,36 @@
+export type MarketCategory =
+  | "politics"
+  | "economy"
+  | "policy"
+  | "geopolitics"
+  | "public_health"
+  | "climate_energy"
+  | "other";
+
+export interface Market {
+  id: string;
+  question: string;
+  description: string | null;
+  url: string;
+  endDate: string | null;
+  liquidity: number | null;
+  volume: number | null;
+  openInterest: number | null;
+  tags: string[];
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface MarketScoreBreakdown {
+  civicScore: number;
+  newsworthinessScore: number;
+  category: MarketCategory;
+  reasonCodes: string[];
+}
+
+export interface CuratedFeedItem extends Market {
+  isCurated: boolean;
+  decisionReason: string;
+  score: MarketScoreBreakdown;
+}
+

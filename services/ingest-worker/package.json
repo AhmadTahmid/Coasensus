@@ -1,0 +1,14 @@
+{
+  "name": "@coasensus/ingest-worker",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"TODO: run ingest worker in dev mode\"",
+    "build": "echo \"TODO: build ingest worker\"",
+    "lint": "echo \"TODO: lint ingest worker\"",
+    "typecheck": "echo \"TODO: typecheck ingest worker\"",
+    "test": "echo \"TODO: test ingest worker\""
+  }
+}
+

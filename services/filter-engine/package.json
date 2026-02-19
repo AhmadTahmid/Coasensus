@@ -1,0 +1,14 @@
+{
+  "name": "@coasensus/filter-engine",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"TODO: run filter engine in dev mode\"",
+    "build": "echo \"TODO: build filter engine\"",
+    "lint": "echo \"TODO: lint filter engine\"",
+    "typecheck": "echo \"TODO: typecheck filter engine\"",
+    "test": "echo \"TODO: test filter engine\""
+  }
+}
+
