@@ -6,6 +6,7 @@
 3. Shared market data contracts are scaffolded.
 4. Agent workflow docs and commit policy are written.
 5. Live Polymarket fetch client and local smoke test are available.
+6. Fresh-session checkpoint doc exists at `docs/HANDOFF.md`.
 
 ## What you do first
 1. Open a terminal in this folder:
