@@ -24,6 +24,24 @@ describe("normalizeMarket", () => {
     expect(normalized.tags).toEqual(["economy", "macro"]);
   });
 
+  it("pulls fallback tags and url from event metadata", () => {
+    const normalized = normalizeMarket({
+      id: "evt-1",
+      question: "Will congress pass the bill?",
+      events: [
+        {
+          slug: "congress-bill-vote",
+          tags: ["policy", "politics"],
+          openInterest: "1234",
+        },
+      ],
+    });
+
+    expect(normalized.url).toBe("https://polymarket.com/event/congress-bill-vote");
+    expect(normalized.tags).toEqual(["policy", "politics"]);
+    expect(normalized.openInterest).toBe(1234);
+  });
+
   it("throws when id or question is missing", () => {
     expect(() =>
       normalizeMarket({
@@ -57,4 +75,3 @@ describe("normalizeActiveMarkets", () => {
     expect(result.dropped).toBe(2);
   });
 });
-

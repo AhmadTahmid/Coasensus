@@ -16,7 +16,8 @@
     "typecheck": "npm run --workspaces --if-present typecheck",
     "dev:web": "npm run --workspace @coasensus/web dev",
     "dev:ingest": "npm run --workspace @coasensus/ingest-worker dev",
-    "dev:filter": "npm run --workspace @coasensus/filter-engine dev"
+    "dev:filter": "npm run --workspace @coasensus/filter-engine dev",
+    "smoke:ingest": "npm run --workspace @coasensus/ingest-worker smoke"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",

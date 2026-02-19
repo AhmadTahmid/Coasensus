@@ -28,4 +28,5 @@ docs/                   # planning, runbooks, decisions
 ```bash
 npm install
 npm run check
+npm run smoke:ingest
 ```

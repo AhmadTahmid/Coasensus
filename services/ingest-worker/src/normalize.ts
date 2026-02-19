@@ -18,6 +18,12 @@ export interface RawPolymarketMarket {
   openInterest?: number | string;
   open_interest?: number | string;
   tags?: string[] | string;
+  events?: Array<{
+    title?: string;
+    slug?: string;
+    openInterest?: number | string;
+    tags?: string[] | string;
+  }>;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -52,6 +58,15 @@ function normalizeTags(value: unknown): string[] {
   return [];
 }
 
+function extractEventTags(raw: RawPolymarketMarket): string[] {
+  if (!Array.isArray(raw.events)) {
+    return [];
+  }
+
+  const allTags = raw.events.flatMap((event) => normalizeTags(event.tags));
+  return [...new Set(allTags)];
+}
+
 function inferMarketUrl(raw: RawPolymarketMarket, id: string): string {
   const directUrl = asStringOrNull(raw.url);
   if (directUrl) {
@@ -60,6 +75,13 @@ function inferMarketUrl(raw: RawPolymarketMarket, id: string): string {
 
   if (raw.slug && raw.slug.trim().length > 0) {
     return `https://polymarket.com/event/${raw.slug.trim()}`;
+  }
+
+  if (Array.isArray(raw.events) && raw.events.length > 0) {
+    const eventSlug = asStringOrNull(raw.events[0]?.slug);
+    if (eventSlug) {
+      return `https://polymarket.com/event/${eventSlug}`;
+    }
   }
 
   return `https://polymarket.com/market/${id}`;
@@ -78,6 +100,8 @@ export function normalizeMarket(raw: RawPolymarketMarket): Market {
 
   const id = String(idValue).trim();
   const url = inferMarketUrl(raw, id);
+  const directTags = normalizeTags(raw.tags);
+  const eventTags = extractEventTags(raw);
 
   return {
     id,
@@ -90,8 +114,8 @@ export function normalizeMarket(raw: RawPolymarketMarket): Market {
       asStringOrNull(raw.resolutionDate),
     liquidity: asNumberOrNull(raw.liquidity ?? raw.liquidityNum),
     volume: asNumberOrNull(raw.volume ?? raw.volumeNum),
-    openInterest: asNumberOrNull(raw.openInterest ?? raw.open_interest),
-    tags: normalizeTags(raw.tags),
+    openInterest: asNumberOrNull(raw.openInterest ?? raw.open_interest ?? raw.events?.[0]?.openInterest),
+    tags: [...new Set([...directTags, ...eventTags])],
     createdAt: asStringOrNull(raw.createdAt),
     updatedAt: asStringOrNull(raw.updatedAt),
   };
@@ -114,4 +138,3 @@ export function normalizeActiveMarkets(rawMarkets: unknown[]): NormalizationResu
 
   return { markets, dropped };
 }
-

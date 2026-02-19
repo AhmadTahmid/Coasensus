@@ -10,3 +10,6 @@
 7. Added real foundation tooling: ESLint + Vitest + strict workspace typecheck.
 8. Added ingest normalizer module with tests.
 9. Added filter engine module with deterministic curation + tests.
+10. Added live Polymarket API client with pagination, timeout, retries, and backoff.
+11. Added ingestion run helper (`runIngestionOnce`) and local smoke script.
+12. Validated live smoke run against Polymarket (`rawCount: 100`, `normalizedCount: 100`).

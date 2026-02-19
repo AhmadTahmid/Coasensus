@@ -1,24 +1,24 @@
 # Issue Checklist (Execution Board)
 
 ## EPIC-00 Foundation
-- [ ] `PLAT-001` Initialize strict TS monorepo tooling
-- [ ] `PLAT-002` Add lint + format + test baseline
-- [ ] `PLAT-003` Stabilize shared contracts in `packages/shared-types`
-- [ ] `PLAT-004` Add CI checks for typecheck/lint/test
+- [x] `PLAT-001` Initialize strict TS monorepo tooling
+- [x] `PLAT-002` Add lint + format + test baseline
+- [x] `PLAT-003` Stabilize shared contracts in `packages/shared-types`
+- [x] `PLAT-004` Add CI checks for typecheck/lint/test
 
 ## EPIC-01 Polymarket Ingestion
-- [ ] `ING-001` Build active market API client adapter
-- [ ] `ING-002` Add normalization mapper -> canonical `Market`
+- [x] `ING-001` Build active market API client adapter
+- [x] `ING-002` Add normalization mapper -> canonical `Market`
 - [ ] `ING-003` Persist raw payloads + normalized records
-- [ ] `ING-004` Add retries, timeout, and backoff policy
+- [x] `ING-004` Add retries, timeout, and backoff policy
 - [ ] `ING-005` Add ingestion metrics and success/failure logs
 
 ## EPIC-02 Curation Engine
-- [ ] `FLT-001` Add hard exclusion rules for meme/noise categories
-- [ ] `FLT-002` Add civic relevance scoring rules
-- [ ] `FLT-003` Add newsworthiness scoring rules
-- [ ] `FLT-004` Generate explainable `decisionReason` output
-- [ ] `FLT-005` Add curated fixtures and unit tests
+- [x] `FLT-001` Add hard exclusion rules for meme/noise categories
+- [x] `FLT-002` Add civic relevance scoring rules
+- [x] `FLT-003` Add newsworthiness scoring rules
+- [x] `FLT-004` Generate explainable `decisionReason` output
+- [x] `FLT-005` Add curated fixtures and unit tests
 
 ## EPIC-03 API + Feed UI
 - [ ] `WEB-001` Create curated feed API with pagination
@@ -35,7 +35,7 @@
 - [ ] `INF-005` Validate HTTPS and caching behavior
 
 ## EPIC-05 QA + Reliability
-- [ ] `QA-001` Add ingestion smoke checks
+- [x] `QA-001` Add ingestion smoke checks
 - [ ] `QA-002` Add stale-feed detection
 - [ ] `QA-003` Add API smoke tests
 - [ ] `QA-004` Add deploy verification checklist
@@ -48,4 +48,3 @@
 - Agent 4: EPIC-03
 - Agent 5: EPIC-04
 - Agent 6: EPIC-05
-

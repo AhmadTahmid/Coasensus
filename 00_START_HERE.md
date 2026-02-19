@@ -5,20 +5,19 @@
 2. A monorepo skeleton is ready for multi-agent work.
 3. Shared market data contracts are scaffolded.
 4. Agent workflow docs and commit policy are written.
+5. Live Polymarket fetch client and local smoke test are available.
 
 ## What you do first
 1. Open a terminal in this folder:
    - `E:\Coasensus Predictive future`
 2. Run:
    - `npm install`
-3. Initialize local git history (if not already initialized):
-   - `git init`
-4. Make sure git identity is set:
-   - `git config --global user.name "Your Name"`
-   - `git config --global user.email "you@example.com"`
-5. First commit:
-   - `git add -A`
-   - `git commit -m "chore: initialize coasensus scaffold and execution docs"`
+3. Validate workspace:
+   - `npm run check`
+4. Run live ingestion smoke test:
+   - `npm run smoke:ingest`
+5. Optional tuning for smoke run:
+   - `POLYMARKET_LIMIT_PER_PAGE=100 POLYMARKET_MAX_PAGES=3 npm run smoke:ingest`
 
 ## How to run multiple Codex agents
 1. Read `docs/ORCHESTRATION_PLAYBOOK.md`.
@@ -32,7 +31,6 @@
 
 ## If you want me to keep driving
 1. I can set up the actual `apps/web` Next.js app.
-2. I can scaffold Polymarket ingestion service.
+2. I can add DB persistence for fetched and normalized markets.
 3. I can scaffold filter engine with tests.
 4. I can prepare Cloudflare deployment config next.
-
