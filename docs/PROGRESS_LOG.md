@@ -69,3 +69,10 @@
 52. Verified live refresh + feed population on both environments after tuning:
    - production counts: total `800`, curated `214`, rejected `586`
    - staging counts: total `800`, curated `214`, rejected `586`
+53. Rotated `COASENSUS_ADMIN_REFRESH_TOKEN` on staging + production and verified:
+   - no token => `401`
+   - old token => `401`
+   - new token => `200`
+54. Added algorithm documentation for non-technical and technical readers:
+   - `docs/FILTER_ALGORITHM.md`
+   - linked from root `README.md`

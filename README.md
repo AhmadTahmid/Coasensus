@@ -8,6 +8,7 @@ The goal is to keep civic-impact and newsworthy markets while removing meme/nois
 - Main execution plan: `COASENSUS_EXECUTION_PLAN.md`
 - Beginner runbook: `00_START_HERE.md`
 - Agent orchestration guide: `docs/ORCHESTRATION_PLAYBOOK.md`
+- Filter algorithm explainer: `docs/FILTER_ALGORITHM.md`
 - Fresh-session checkpoint: `docs/HANDOFF.md`
 - Foundation checks now run with:
   - TypeScript typecheck

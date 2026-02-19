@@ -10,6 +10,7 @@ This file is the explicit handoff checkpoint.
 3. `docs/PROGRESS_LOG.md`
 4. `docs/ISSUE_CHECKLIST.md`
 5. `COASENSUS_EXECUTION_PLAN.md`
+6. `docs/FILTER_ALGORITHM.md`
 
 ## Current checkpoint
 1. Last pushed commit: run `git log --oneline -n 1`
@@ -63,6 +64,8 @@ This file is the explicit handoff checkpoint.
 11. Curation tuning checkpoint:
    - Removed false positives from substring matching (`who` keyword bug).
    - Added stronger sports/entertainment exclusions and stricter news threshold.
+12. Admin refresh token was rotated after earlier exposure in chat logs.
+    - endpoint now requires current token (`401` without/old token, `200` with current token).
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
