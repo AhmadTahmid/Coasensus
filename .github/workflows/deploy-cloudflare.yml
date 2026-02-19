@@ -107,7 +107,17 @@ jobs:
         run: npx wrangler whoami
 
       - name: Deploy API Worker
-        run: npx wrangler deploy --config infra/cloudflare/wrangler.api.ci.jsonc --env production --log-level debug
+        shell: bash
+        run: |
+          set +e
+          npx wrangler deploy --config infra/cloudflare/wrangler.api.ci.jsonc --env production --log-level debug > worker-deploy.log 2>&1
+          code=$?
+          cat worker-deploy.log
+          if [[ $code -ne 0 ]]; then
+            tail_text="$(tail -n 40 worker-deploy.log | tr '\n' ' ' | tr '\r' ' ' | sed 's/%/%25/g')"
+            echo "::error file=.github/workflows/deploy-cloudflare.yml,line=109::Worker deploy failed. ${tail_text}"
+            exit $code
+          fi
 
       - name: Deploy Pages
         run: npx wrangler pages deploy apps/web/public --project-name coasensus-web --branch main
