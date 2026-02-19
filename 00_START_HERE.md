@@ -22,6 +22,11 @@
    - `infra/db/local/latest/snapshot.json`
    - `infra/db/local/latest/raw.json`
    - `infra/db/local/latest/normalized.json`
+7. Start local feed API:
+   - `npm run dev:feed-api`
+8. Open in browser:
+   - `http://localhost:8787/health`
+   - `http://localhost:8787/feed?page=1&pageSize=20&sort=score`
 
 ## How to run multiple Codex agents
 1. Read `docs/ORCHESTRATION_PLAYBOOK.md`.

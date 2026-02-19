@@ -14,3 +14,4 @@
 11. Added ingestion run helper (`runIngestionOnce`) and local smoke script.
 12. Validated live smoke run against Polymarket (`rawCount: 100`, `normalizedCount: 100`).
 13. Added local persistence for raw + normalized + snapshot artifacts under `infra/db/local`.
+14. Added local curated feed API (`/feed`) backed by latest persisted normalized data.

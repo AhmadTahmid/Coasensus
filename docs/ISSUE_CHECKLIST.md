@@ -21,7 +21,7 @@
 - [x] `FLT-005` Add curated fixtures and unit tests
 
 ## EPIC-03 API + Feed UI
-- [ ] `WEB-001` Create curated feed API with pagination
+- [x] `WEB-001` Create curated feed API with pagination
 - [ ] `WEB-002` Build feed/card page with responsive layout
 - [ ] `WEB-003` Add category badges and sorting controls
 - [ ] `WEB-004` Add empty/loading/error states

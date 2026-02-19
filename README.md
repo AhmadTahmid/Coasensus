@@ -29,4 +29,5 @@ docs/                   # planning, runbooks, decisions
 npm install
 npm run check
 npm run smoke:ingest
+npm run dev:feed-api
 ```

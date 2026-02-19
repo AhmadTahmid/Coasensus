@@ -5,6 +5,17 @@ Responsible for pulling active Polymarket markets, handling retries, and normali
 ## Commands
 - `npm run --workspace @coasensus/ingest-worker test`
 - `npm run --workspace @coasensus/ingest-worker smoke`
+- `npm run --workspace @coasensus/ingest-worker api`
+
+## Local feed API
+After running smoke ingestion at least once, start API:
+- `npm run dev:feed-api`
+
+Routes:
+- `GET /health`
+- `GET /feed?page=1&pageSize=20&sort=score`
+- `GET /feed?page=1&pageSize=20&sort=volume`
+- `GET /feed?page=1&pageSize=20&sort=endDate&category=policy`
 
 ## Smoke-test environment knobs
 - `POLYMARKET_LIMIT_PER_PAGE` (default: `50`)
