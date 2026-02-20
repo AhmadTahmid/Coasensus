@@ -172,3 +172,23 @@
 86. Verified live staging feed remains healthy after Gemini enablement:
    - `scoreFormula=front_page_score_v1`
    - feed returns non-zero `frontPageScore` values.
+87. Added semantic telemetry persistence migration `0004_semantic_refresh_runs.sql` and wired refresh-run metric writes in Worker.
+88. Added admin-protected telemetry endpoint:
+   - `GET /api/admin/semantic-metrics?limit=30`
+   - returns recent run metrics + aggregated prompt/provider/model stats.
+89. Applied migration `0004_semantic_refresh_runs.sql` to remote staging D1 and deployed telemetry-enabled Worker (`5dbed2f8-2e3f-4811-9e6c-e7788de1e393`).
+90. Detected and fixed LLM cap bug:
+   - previous logic capped successful LLM calls, not attempts, causing excessive retries on provider failures
+   - added `llmAttempts` metric and now cap is enforced on attempts (`COASENSUS_LLM_MAX_MARKETS_PER_RUN`).
+91. Re-ran staging cap tests after fix (forced cache misses via prompt-version bumps):
+   - `v1-gemini-ramp-8fix`: attempts `8`, success `1`, failures `7`, runtime ~`11.8s`
+   - `v1-gemini-ramp-16fix`: attempts `16`, success `0`, failures `16`, runtime ~`12.4s`
+   - `v1-gemini-ramp-32fix`: attempts `32`, success `0`, failures `32`, runtime ~`16.3s`
+92. Restored staging to stable Gemini profile and redeployed (`353018fd-7e32-4814-8dc3-d2f3036682d5`):
+   - provider `gemini`
+   - model `gemini-2.5-flash`
+   - prompt `v1-gemini-002`
+   - cap `COASENSUS_LLM_MAX_MARKETS_PER_RUN=8`
+93. Verified latest staging refresh and telemetry endpoint:
+   - latest run reports `llmAttempts` and correct success-rate math
+   - feed remains healthy with `scoreFormula=front_page_score_v1`.

@@ -163,9 +163,12 @@ interface SemanticEnrichmentResult {
   byMarketId: Map<string, SemanticClassification>;
   metrics: {
     llmEnabled: boolean;
+    llmProvider: LlmProvider;
+    llmModel: string;
     promptVersion: string;
     cacheHits: number;
     cacheMisses: number;
+    llmAttempts: number;
     llmEvaluated: number;
     heuristicEvaluated: number;
     llmFailures: number;
@@ -190,9 +193,12 @@ export interface RefreshSummary {
   rejectedCount: number;
   semantic: {
     llmEnabled: boolean;
+    llmProvider: LlmProvider;
+    llmModel: string;
     promptVersion: string;
     cacheHits: number;
     cacheMisses: number;
+    llmAttempts: number;
     llmEvaluated: number;
     heuristicEvaluated: number;
     llmFailures: number;
@@ -447,6 +453,14 @@ function normalizeBaseUrl(baseUrl: string): string {
 function resolveLlmProvider(env: RefreshEnv): LlmProvider {
   const value = env.COASENSUS_LLM_PROVIDER?.trim().toLowerCase() || DEFAULT_LLM_PROVIDER;
   return value === "gemini" ? "gemini" : "openai";
+}
+
+function resolveLlmModel(env: RefreshEnv, provider: LlmProvider): string {
+  const configured = env.COASENSUS_LLM_MODEL?.trim();
+  if (configured) {
+    return configured;
+  }
+  return provider === "gemini" ? DEFAULT_GEMINI_MODEL : DEFAULT_LLM_MODEL;
 }
 
 function buildPageUrl(baseUrl: string, options: FetchOptions, offset: number): string {
@@ -821,7 +835,7 @@ async function classifyMarketWithOpenAI(
     throw new Error("LLM enabled but COASENSUS_LLM_API_KEY missing");
   }
 
-  const model = env.COASENSUS_LLM_MODEL?.trim() || DEFAULT_LLM_MODEL;
+  const model = resolveLlmModel(env, "openai");
   const baseUrl = normalizeBaseUrl(env.COASENSUS_LLM_BASE_URL?.trim() || DEFAULT_LLM_BASE_URL);
   const systemPrompt =
     "You are the Editor-in-Chief for a predictive news feed. Return JSON only. Classify if market is meme/noise, assign newsworthiness score (1-100), category, geo tag, and confidence.";
@@ -935,7 +949,7 @@ async function classifyMarketWithGemini(
   if (!apiKey) {
     throw new Error("LLM enabled but COASENSUS_LLM_API_KEY missing");
   }
-  const model = env.COASENSUS_LLM_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
+  const model = resolveLlmModel(env, "gemini");
   const baseUrl = normalizeBaseUrl(env.COASENSUS_LLM_BASE_URL?.trim() || DEFAULT_GEMINI_BASE_URL);
   const promptText = [
     "You are the Editor-in-Chief for a predictive news feed.",
@@ -1138,6 +1152,8 @@ async function upsertSemanticCache(
 
 async function enrichMarketsWithSemanticCache(env: RefreshEnv, markets: Market[]): Promise<SemanticEnrichmentResult> {
   const promptVersion = env.COASENSUS_LLM_PROMPT_VERSION?.trim() || DEFAULT_LLM_PROMPT_VERSION;
+  const llmProvider = resolveLlmProvider(env);
+  const llmModel = resolveLlmModel(env, llmProvider);
   const llmConfigured = asBool(env.COASENSUS_LLM_ENABLED, false) && Boolean(env.COASENSUS_LLM_API_KEY?.trim());
   const maxLlmMarkets = asPositiveInt(
     env.COASENSUS_LLM_MAX_MARKETS_PER_RUN,
@@ -1175,13 +1191,15 @@ async function enrichMarketsWithSemanticCache(env: RefreshEnv, markets: Market[]
   }> = [];
 
   let llmEvaluated = 0;
+  let llmAttempts = 0;
   let heuristicEvaluated = 0;
   let llmFailures = 0;
 
   for (const candidate of toClassify) {
     let classification: SemanticClassification;
 
-    if (llmConfigured && llmEvaluated < maxLlmMarkets) {
+    if (llmConfigured && llmAttempts < maxLlmMarkets) {
+      llmAttempts += 1;
       try {
         classification = await classifyMarketSemantic(env, candidate.market, promptVersion);
         llmEvaluated += 1;
@@ -1211,9 +1229,12 @@ async function enrichMarketsWithSemanticCache(env: RefreshEnv, markets: Market[]
     byMarketId,
     metrics: {
       llmEnabled: llmConfigured,
+      llmProvider,
+      llmModel,
       promptVersion,
       cacheHits,
       cacheMisses,
+      llmAttempts,
       llmEvaluated,
       heuristicEvaluated,
       llmFailures,
@@ -1519,6 +1540,114 @@ async function replaceCuratedFeedSnapshot(
     .run();
 }
 
+async function persistSemanticRunTelemetry(
+  db: D1Database,
+  summary: {
+    runId: string;
+    fetchedAt: string;
+    pagesFetched: number;
+    rawCount: number;
+    normalizedCount: number;
+    curatedCount: number;
+    rejectedCount: number;
+    bouncerDroppedCount: number;
+    semantic: {
+      llmEnabled: boolean;
+      llmProvider: LlmProvider;
+      llmModel: string;
+      promptVersion: string;
+      cacheHits: number;
+      cacheMisses: number;
+      llmEvaluated: number;
+      heuristicEvaluated: number;
+      llmFailures: number;
+    };
+    metrics: {
+      totalMs: number;
+      fetchMs: number;
+      normalizeMs: number;
+      persistMs: number;
+    };
+  }
+): Promise<void> {
+  const nowIso = new Date().toISOString();
+  await db
+    .prepare(
+      `
+      INSERT INTO semantic_refresh_runs (
+        run_id,
+        fetched_at,
+        prompt_version,
+        llm_enabled,
+        llm_provider,
+        llm_model,
+        pages_fetched,
+        raw_count,
+        normalized_count,
+        curated_count,
+        rejected_count,
+        bouncer_dropped_count,
+        cache_hits,
+        cache_misses,
+        llm_evaluated,
+        heuristic_evaluated,
+        llm_failures,
+        total_ms,
+        fetch_ms,
+        normalize_ms,
+        persist_ms,
+        created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(run_id) DO UPDATE SET
+        fetched_at = excluded.fetched_at,
+        prompt_version = excluded.prompt_version,
+        llm_enabled = excluded.llm_enabled,
+        llm_provider = excluded.llm_provider,
+        llm_model = excluded.llm_model,
+        pages_fetched = excluded.pages_fetched,
+        raw_count = excluded.raw_count,
+        normalized_count = excluded.normalized_count,
+        curated_count = excluded.curated_count,
+        rejected_count = excluded.rejected_count,
+        bouncer_dropped_count = excluded.bouncer_dropped_count,
+        cache_hits = excluded.cache_hits,
+        cache_misses = excluded.cache_misses,
+        llm_evaluated = excluded.llm_evaluated,
+        heuristic_evaluated = excluded.heuristic_evaluated,
+        llm_failures = excluded.llm_failures,
+        total_ms = excluded.total_ms,
+        fetch_ms = excluded.fetch_ms,
+        normalize_ms = excluded.normalize_ms,
+        persist_ms = excluded.persist_ms
+    `
+    )
+    .bind(
+      summary.runId,
+      summary.fetchedAt,
+      summary.semantic.promptVersion,
+      summary.semantic.llmEnabled ? 1 : 0,
+      summary.semantic.llmProvider,
+      summary.semantic.llmModel,
+      summary.pagesFetched,
+      summary.rawCount,
+      summary.normalizedCount,
+      summary.curatedCount,
+      summary.rejectedCount,
+      summary.bouncerDroppedCount,
+      summary.semantic.cacheHits,
+      summary.semantic.cacheMisses,
+      summary.semantic.llmEvaluated,
+      summary.semantic.heuristicEvaluated,
+      summary.semantic.llmFailures,
+      summary.metrics.totalMs,
+      summary.metrics.fetchMs,
+      summary.metrics.normalizeMs,
+      summary.metrics.persistMs,
+      nowIso
+    )
+    .run();
+}
+
 export async function getFeedCounts(db: D1Database): Promise<FeedCounts> {
   const row = await db
     .prepare(
@@ -1574,7 +1703,7 @@ export async function refreshCuratedFeed(env: RefreshEnv): Promise<RefreshSummar
   );
   const persistMs = Date.now() - persistStarted;
 
-  return {
+  const summary: RefreshSummary = {
     runId,
     fetchedAt,
     pagesFetched: fetched.pagesFetched,
@@ -1592,4 +1721,13 @@ export async function refreshCuratedFeed(env: RefreshEnv): Promise<RefreshSummar
       persistMs,
     },
   };
+
+  try {
+    await persistSemanticRunTelemetry(env.DB, summary);
+  } catch (error) {
+    // Keep refresh robust when telemetry schema is not yet migrated.
+    console.error("Failed to persist semantic refresh telemetry", error);
+  }
+
+  return summary;
 }

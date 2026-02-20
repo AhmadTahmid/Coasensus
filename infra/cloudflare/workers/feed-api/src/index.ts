@@ -74,6 +74,44 @@ interface AnalyticsRow {
   details_json: string;
 }
 
+interface SemanticRefreshRunRow {
+  run_id: string;
+  fetched_at: string;
+  prompt_version: string;
+  llm_enabled: number;
+  llm_provider: string;
+  llm_model: string;
+  pages_fetched: number;
+  raw_count: number;
+  normalized_count: number;
+  curated_count: number;
+  rejected_count: number;
+  bouncer_dropped_count: number;
+  cache_hits: number;
+  cache_misses: number;
+  llm_evaluated: number;
+  heuristic_evaluated: number;
+  llm_failures: number;
+  total_ms: number;
+  fetch_ms: number;
+  normalize_ms: number;
+  persist_ms: number;
+  created_at: string;
+}
+
+interface SemanticAggregateRow {
+  prompt_version: string;
+  llm_provider: string;
+  llm_model: string;
+  run_count: number;
+  llm_evaluated: number;
+  llm_failures: number;
+  heuristic_evaluated: number;
+  cache_hits: number;
+  cache_misses: number;
+  avg_total_ms: number;
+}
+
 const CATEGORY_SET = new Set<MarketCategory>([
   "politics",
   "economy",
@@ -473,6 +511,146 @@ async function handleAnalyticsList(url: URL, env: Env, origin: string): Promise<
   }
 }
 
+async function handleSemanticMetrics(
+  request: Request,
+  url: URL,
+  env: Env,
+  origin: string
+): Promise<Response> {
+  if (!hasRefreshAccess(request, url, env)) {
+    return json(401, { error: "Unauthorized semantic metrics request" }, origin);
+  }
+
+  try {
+    const limit = asPositiveInt(url.searchParams.get("limit"), 30, 1, 200);
+
+    const runsQuery = `
+      SELECT
+        run_id,
+        fetched_at,
+        prompt_version,
+        llm_enabled,
+        llm_provider,
+        llm_model,
+        pages_fetched,
+        raw_count,
+        normalized_count,
+        curated_count,
+        rejected_count,
+        bouncer_dropped_count,
+        cache_hits,
+        cache_misses,
+        llm_evaluated,
+        heuristic_evaluated,
+        llm_failures,
+        total_ms,
+        fetch_ms,
+        normalize_ms,
+        persist_ms,
+        created_at
+      FROM semantic_refresh_runs
+      ORDER BY fetched_at DESC
+      LIMIT ?
+    `;
+
+    const aggregateQuery = `
+      SELECT
+        prompt_version,
+        llm_provider,
+        llm_model,
+        COUNT(*) AS run_count,
+        SUM(llm_evaluated) AS llm_evaluated,
+        SUM(llm_failures) AS llm_failures,
+        SUM(heuristic_evaluated) AS heuristic_evaluated,
+        SUM(cache_hits) AS cache_hits,
+        SUM(cache_misses) AS cache_misses,
+        AVG(total_ms) AS avg_total_ms
+      FROM semantic_refresh_runs
+      GROUP BY prompt_version, llm_provider, llm_model
+      ORDER BY MAX(fetched_at) DESC
+      LIMIT 20
+    `;
+
+    const [runsRows, aggregateRows] = await Promise.all([
+      env.DB.prepare(runsQuery).bind(limit).all<SemanticRefreshRunRow>(),
+      env.DB.prepare(aggregateQuery).all<SemanticAggregateRow>(),
+    ]);
+
+    const runs = (runsRows.results ?? []).map((row) => {
+      const llmEvaluated = Number(row.llm_evaluated ?? 0);
+      const llmFailures = Number(row.llm_failures ?? 0);
+      const llmAttempts = llmEvaluated + llmFailures;
+      const llmSuccessRate = llmAttempts > 0 ? Number((llmEvaluated / llmAttempts).toFixed(4)) : null;
+      return {
+        runId: row.run_id,
+        fetchedAt: row.fetched_at,
+        promptVersion: row.prompt_version,
+        llmEnabled: Number(row.llm_enabled) === 1,
+        llmProvider: row.llm_provider,
+        llmModel: row.llm_model,
+        pagesFetched: Number(row.pages_fetched ?? 0),
+        rawCount: Number(row.raw_count ?? 0),
+        normalizedCount: Number(row.normalized_count ?? 0),
+        curatedCount: Number(row.curated_count ?? 0),
+        rejectedCount: Number(row.rejected_count ?? 0),
+        bouncerDroppedCount: Number(row.bouncer_dropped_count ?? 0),
+        cacheHits: Number(row.cache_hits ?? 0),
+        cacheMisses: Number(row.cache_misses ?? 0),
+        llmAttempts,
+        llmEvaluated,
+        heuristicEvaluated: Number(row.heuristic_evaluated ?? 0),
+        llmFailures,
+        llmSuccessRate,
+        totalMs: Number(row.total_ms ?? 0),
+        fetchMs: Number(row.fetch_ms ?? 0),
+        normalizeMs: Number(row.normalize_ms ?? 0),
+        persistMs: Number(row.persist_ms ?? 0),
+      };
+    });
+
+    const aggregates = (aggregateRows.results ?? []).map((row) => {
+      const llmEvaluated = Number(row.llm_evaluated ?? 0);
+      const llmFailures = Number(row.llm_failures ?? 0);
+      const llmAttempts = llmEvaluated + llmFailures;
+      const llmSuccessRate = llmAttempts > 0 ? Number((llmEvaluated / llmAttempts).toFixed(4)) : null;
+      return {
+        promptVersion: row.prompt_version,
+        llmProvider: row.llm_provider,
+        llmModel: row.llm_model,
+        runCount: Number(row.run_count ?? 0),
+        llmAttempts,
+        llmEvaluated,
+        llmFailures,
+        heuristicEvaluated: Number(row.heuristic_evaluated ?? 0),
+        cacheHits: Number(row.cache_hits ?? 0),
+        cacheMisses: Number(row.cache_misses ?? 0),
+        llmSuccessRate,
+        avgTotalMs: Number(Number(row.avg_total_ms ?? 0).toFixed(2)),
+      };
+    });
+
+    return json(
+      200,
+      {
+        generatedAt: new Date().toISOString(),
+        runs,
+        aggregates,
+      },
+      origin
+    );
+  } catch (error) {
+    return json(
+      503,
+      {
+        error: "Semantic telemetry unavailable",
+        detail: asErrorMessage(error),
+        hint: "Apply migration 0004_semantic_refresh_runs.sql to D1.",
+      },
+      origin
+    );
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const origin = resolveOrigin(request, env);
@@ -503,6 +681,10 @@ export default {
       return handleAnalyticsList(url, env, origin);
     }
 
+    if (pathname === "/admin/semantic-metrics" && request.method === "GET") {
+      return handleSemanticMetrics(request, url, env, origin);
+    }
+
     if (request.method !== "GET" && request.method !== "POST") {
       return json(405, { error: "Only GET/POST supported" }, origin);
     }
@@ -515,6 +697,7 @@ export default {
           "/api/health",
           "/api/feed?page=1&pageSize=20&sort=score",
           "/api/admin/refresh-feed",
+          "/api/admin/semantic-metrics",
           "/api/analytics",
         ],
       },

@@ -49,7 +49,7 @@
 - [x] `SEM-005` Add `services/llm-editor` scaffold with schema/editor tests
 - [x] `SEM-006` Enable LLM in staging and compare heuristic vs LLM output quality
 - [x] `SEM-007` Implement final front-page ranking formula in API ordering path
-- [ ] `SEM-008` Add semantic quality telemetry dashboard/report
+- [x] `SEM-008` Add semantic quality telemetry dashboard/report
 
 ## Suggested assignment
 - Agent 1: EPIC-00

@@ -11,6 +11,8 @@ This directory tracks database schema and migrations for local SQLite and Cloudf
    - semantic classifier cache table (`semantic_market_cache`)
 3. `migrations/0003_front_page_score.sql`
    - add persisted ranking column (`curated_feed.front_page_score`) + index
+4. `migrations/0004_semantic_refresh_runs.sql`
+   - add refresh telemetry table (`semantic_refresh_runs`) for LLM/cache metrics
 
 ## Cloudflare D1 usage
 From repo root:

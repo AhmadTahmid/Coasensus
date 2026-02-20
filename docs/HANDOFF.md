@@ -100,12 +100,16 @@ This file is the explicit handoff checkpoint.
 11. Staging Gemini status:
    - staging env currently set to Gemini (`COASENSUS_LLM_ENABLED=1`, provider `gemini`)
    - prompt version: `v1-gemini-002`
-   - cap: `COASENSUS_LLM_MAX_MARKETS_PER_RUN=8` (keeps refresh stable on current quota)
-   - recent clean semantic metrics: `llmEvaluated=8`, `llmFailures=0`, `heuristicEvaluated=792`
-12. Pending next milestone:
+   - cap: `COASENSUS_LLM_MAX_MARKETS_PER_RUN=8` (attempt-capped; fixed to prevent runaway failures)
+   - latest metrics snapshot: `llmAttempts=8`, `llmEvaluated=0`, `llmFailures=8`, `heuristicEvaluated=799`
+12. SEM-008 telemetry status:
+   - migration added: `infra/db/migrations/0004_semantic_refresh_runs.sql`
+   - refresh pipeline persists telemetry rows in `semantic_refresh_runs`
+   - admin endpoint live: `GET /api/admin/semantic-metrics?limit=30` (token-protected)
+13. Pending next milestone:
    - tune semantic thresholds and ranking weights using observed outcomes
    - increase LLM cap gradually if/when provider quota allows
-   - add semantic telemetry/reporting (`SEM-008`)
+   - decide whether to keep Gemini-only staging profile or fall back to heuristic-first when quota is tight
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

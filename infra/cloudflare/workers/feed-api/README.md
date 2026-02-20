@@ -6,8 +6,9 @@ Cloudflare Worker API for Coasensus.
 1. `GET /api/health`
 2. `GET /api/feed?page=1&pageSize=20&sort=score`
 3. `POST /api/admin/refresh-feed` (manual ingestion refresh; requires `X-Admin-Token` if `COASENSUS_ADMIN_REFRESH_TOKEN` secret is set)
-4. `POST /api/analytics`
-5. `GET /api/analytics?limit=50`
+4. `GET /api/admin/semantic-metrics?limit=30` (admin-protected telemetry snapshot)
+5. `POST /api/analytics`
+6. `GET /api/analytics?limit=50`
 
 ## Data source
 Reads from D1 tables:
@@ -16,6 +17,7 @@ Reads from D1 tables:
 3. `ingestion_runs`
 4. `latest_state`
 5. `semantic_market_cache` (LLM/editor output cache)
+6. `semantic_refresh_runs` (refresh telemetry history)
 
 ## Refresh behavior
 1. `GET /api/feed` auto-triggers a refresh if `curated_feed` is empty (controlled by `COASENSUS_AUTO_REFRESH_ON_EMPTY`).
@@ -32,7 +34,7 @@ Reads from D1 tables:
    - `COASENSUS_LLM_BASE_URL` (default: `https://api.openai.com/v1`)
    - `COASENSUS_LLM_PROMPT_VERSION`
    - `COASENSUS_LLM_MIN_NEWS_SCORE`
-   - `COASENSUS_LLM_MAX_MARKETS_PER_RUN`
+   - `COASENSUS_LLM_MAX_MARKETS_PER_RUN` (max LLM attempts per refresh run)
    - Worker secret required: `COASENSUS_LLM_API_KEY`
    - For Gemini 2.5 Flash, set:
      - `COASENSUS_LLM_PROVIDER=gemini`

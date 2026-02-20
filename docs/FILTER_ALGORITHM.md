@@ -47,6 +47,10 @@ Semantic layer defaults:
 - `COASENSUS_LLM_MIN_NEWS_SCORE=55`
 - `COASENSUS_LLM_MAX_MARKETS_PER_RUN=150`
 
+Note:
+- `COASENSUS_LLM_MAX_MARKETS_PER_RUN` is an **attempt cap** (not success cap).
+- If provider calls fail, remaining markets fall back to heuristic classification.
+
 Front-page ranking defaults:
 - `COASENSUS_FRONTPAGE_W1=0.6`
 - `COASENSUS_FRONTPAGE_W2=0.25`
@@ -200,4 +204,13 @@ This is still mostly heuristic + prompt-based filtering, so:
   - `services/filter-engine/src/filter.test.ts`
 - Feed API sorting/filter behavior:
   - `infra/cloudflare/workers/feed-api/src/index.ts`
+
+## 14. Telemetry
+
+Admin-only endpoint:
+- `GET /api/admin/semantic-metrics?limit=30`
+
+Provides:
+- recent semantic refresh runs
+- aggregated LLM/cache metrics by prompt/provider/model
 
