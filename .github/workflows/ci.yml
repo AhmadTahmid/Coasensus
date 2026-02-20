@@ -27,6 +27,17 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Test
-        run: npm run test
+      - name: Test web
+        run: npx vitest run --pool=threads --root apps/web
 
+      - name: Test filter-engine
+        run: npx vitest run --pool=threads --root services/filter-engine
+
+      - name: Test ingest-worker
+        run: npx vitest run --pool=threads --root services/ingest-worker
+
+      - name: Test llm-editor
+        run: npx vitest run --pool=threads --root services/llm-editor
+
+      - name: Test shared-types
+        run: npm run --workspace @coasensus/shared-types test

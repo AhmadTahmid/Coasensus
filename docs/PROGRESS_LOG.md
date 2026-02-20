@@ -247,3 +247,8 @@
 113. Local validation after lockfile fix:
    - `npm ci` => success
    - `npm run check` => success (typecheck, lint, tests across workspaces).
+114. Hardened CI test diagnostics in `.github/workflows/ci.yml`:
+   - replaced monolithic `npm run test` step with per-workspace test steps for clearer failure attribution.
+115. Validated updated CI test commands on Linux Node 22 container:
+   - ran `npm ci` and each workspace test command from CI script
+   - all commands passed in `node:22-bullseye`.

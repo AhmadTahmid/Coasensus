@@ -132,6 +132,9 @@ This file is the explicit handoff checkpoint.
 17. CI lockfile checkpoint:
    - fixed `npm ci` failure by syncing `package-lock.json` with `@coasensus/llm-editor` workspace
    - local `npm ci` and `npm run check` now pass again
+18. CI diagnostics checkpoint:
+   - CI workflow now runs tests per workspace for clearer failing-package visibility
+   - Linux Node 22 container validation passed for new CI test commands
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
