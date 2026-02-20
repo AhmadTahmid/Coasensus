@@ -298,3 +298,18 @@
    - includes LLM provider/model/prompt/min-news-score/max-per-run and front-page ranking weights.
 132. Local validation for config fix:
    - `wrangler.api.ci.jsonc` parses as valid JSON.
+133. Merged CI config fix to `main` and pushed (`530e567`), triggering fresh CI + deploy pipeline.
+134. Post-merge pipeline status:
+   - CI run `22234911583` => success
+   - Deploy Cloudflare run `22234911551` => success
+135. Verified semantic runtime profile after next production refresh window:
+   - manual monitor run `22235285311` => success
+   - latest production semantic telemetry snapshot (`fetchedAt 2026-02-20T18:00:44.996Z`) now reports:
+     - `llmEnabled: true`
+     - `llmProvider: gemini`
+     - `llmModel: gemini-2.5-flash`
+     - `llmEvaluated: 8`
+     - `llmFailures: 0`
+136. Staging profile remains healthy and aligned:
+   - monitor run `22234968743` => success
+   - latest staging telemetry shows `llmEnabled: true`, provider `gemini`, model `gemini-2.5-flash`.

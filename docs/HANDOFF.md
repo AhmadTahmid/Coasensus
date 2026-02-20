@@ -160,6 +160,10 @@ This file is the explicit handoff checkpoint.
    - fixed `infra/cloudflare/wrangler.api.ci.jsonc` to include full runtime vars for staging/production
    - prevents CI deploys from silently reverting to code defaults (e.g., `llmEnabled=false`, provider fallback)
    - next `Deploy Cloudflare` run should re-apply intended Gemini semantic profile in production.
+26. Semantic profile reactivation verification:
+   - merged fix to `main` (`530e567`) and deployed successfully
+   - production refresh telemetry now confirms `llmEnabled=true`, `llmProvider=gemini`, `llmModel=gemini-2.5-flash`
+   - staging telemetry remains aligned on Gemini profile.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
