@@ -221,3 +221,14 @@
    - `GET /api/feed?sort=score` => healthy (`front_page_score_v1`, non-zero scores)
 103. Added production error observability path for future provider issues:
    - `llmErrorSamples` now exposed in refresh summary (empty on successful run).
+104. Merged `feat/execution-plan-v2` into `main` and pushed merged branch to origin (`51fb526`).
+105. Completed post-merge production smoke checks:
+   - `GET /api/health` => `200`
+   - `GET /api/feed?sort=score` => `200`
+   - `GET /api/admin/semantic-metrics` without token => `401` (auth path verified)
+106. Added automated production freshness/health monitor:
+   - script: `scripts/monitor-production.mjs`
+   - workflow: `.github/workflows/monitor-production.yml` (cron every 15 min + manual dispatch)
+   - checks health, non-empty feed, and telemetry recency threshold (`COASENSUS_MAX_STALE_MINUTES`)
+107. Added monitor workflow secret requirement to runbook:
+   - GitHub secret `COASENSUS_ADMIN_REFRESH_TOKEN` should match Worker admin token.

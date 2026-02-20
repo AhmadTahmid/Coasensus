@@ -16,7 +16,7 @@ This file is the explicit handoff checkpoint.
 1. Last pushed commit on active execution branch: run `git log --oneline -n 1`
 2. Repo: `https://github.com/AhmadTahmid/Coasensus`
 3. Baseline branch: `main`
-4. Active execution branch for new plan: `feat/execution-plan-v2`
+4. Active execution branch for new plan: merged to `main` at `51fb526`; start new work from fresh task branches.
 5. Core stack status:
    - Ingestion client: implemented
    - Local persistence: implemented (`infra/db/local`)
@@ -30,6 +30,7 @@ This file is the explicit handoff checkpoint.
    - Manual refresh endpoint: implemented (`POST /api/admin/refresh-feed`)
    - Scheduled refresh: implemented (staging every 30m, production every 15m)
    - Admin refresh auth: protected by `COASENSUS_ADMIN_REFRESH_TOKEN` secret
+   - Production monitor workflow: implemented (cron every 15m + manual dispatch)
    - Phase-1 bouncer prefilter: implemented (query-level + local fallback gates)
    - Phase-2 semantic layer: implemented (D1 semantic cache + heuristic classifier + optional LLM path)
 
@@ -116,6 +117,12 @@ This file is the explicit handoff checkpoint.
    - tune semantic thresholds and ranking weights using observed outcomes
    - increase LLM cap gradually if/when provider quota allows
    - optionally align staging/production prompt versions after evaluation window
+15. Post-merge reliability checkpoint:
+   - `feat/execution-plan-v2` merged into `main` and pushed (`51fb526`)
+   - production smoke checks passed (`/api/health`, `/api/feed`, `/api/admin/semantic-metrics` auth path)
+   - monitor workflow added: `.github/workflows/monitor-production.yml`
+   - monitor script: `scripts/monitor-production.mjs`
+   - required GitHub secret for monitor: `COASENSUS_ADMIN_REFRESH_TOKEN`
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

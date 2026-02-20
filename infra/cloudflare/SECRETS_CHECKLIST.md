@@ -10,6 +10,8 @@ Use this list before enabling automated deploys.
      - `Zone.DNS:Edit` (only if you automate DNS)
 2. `CLOUDFLARE_ACCOUNT_ID`
    - Copy from Cloudflare dashboard account page.
+3. `COASENSUS_ADMIN_REFRESH_TOKEN` (for monitor workflow)
+   - must match the Worker secret value used by `/api/admin/*` endpoints
 
 ## Local developer machine
 1. `npx wrangler login`

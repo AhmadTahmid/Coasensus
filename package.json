@@ -18,7 +18,8 @@
     "dev:ingest": "npm run --workspace @coasensus/ingest-worker dev",
     "dev:filter": "npm run --workspace @coasensus/filter-engine dev",
     "smoke:ingest": "npm run --workspace @coasensus/ingest-worker smoke",
-    "dev:feed-api": "npm run --workspace @coasensus/ingest-worker api"
+    "dev:feed-api": "npm run --workspace @coasensus/ingest-worker api",
+    "monitor:prod": "node scripts/monitor-production.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",

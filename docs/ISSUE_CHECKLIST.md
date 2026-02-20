@@ -36,8 +36,8 @@
 
 ## EPIC-05 QA + Reliability
 - [x] `QA-001` Add ingestion smoke checks
-- [ ] `QA-002` Add stale-feed detection
-- [ ] `QA-003` Add API smoke tests
+- [x] `QA-002` Add stale-feed detection
+- [x] `QA-003` Add API smoke tests
 - [ ] `QA-004` Add deploy verification checklist
 - [ ] `QA-005` Define launch gate criteria
 
