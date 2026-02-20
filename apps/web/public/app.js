@@ -101,6 +101,12 @@ function fmtNum(value) {
   return num === null ? "n/a" : num.toLocaleString();
 }
 
+function fmtScore(value) {
+  const num = toNumber(value);
+  if (num === null) return "n/a";
+  return Number.isInteger(num) ? String(num) : num.toFixed(1);
+}
+
 function fmtDate(value) {
   if (!value) return "n/a";
   const date = new Date(value);
@@ -113,6 +119,29 @@ function titleCaseCategory(category) {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function resolveFrontPageScore(item) {
+  const frontPageScore = toNumber(item.frontPageScore);
+  if (frontPageScore !== null) {
+    return frontPageScore;
+  }
+  return (toNumber(item.score?.civicScore) || 0) + (toNumber(item.score?.newsworthinessScore) || 0);
+}
+
+function formatDecisionReason(reason) {
+  if (!reason) return "n/a";
+  return String(reason)
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
+function truncateDescription(value) {
+  if (!value) return "";
+  const text = String(value).trim();
+  if (!text) return "";
+  if (text.length <= 220) return text;
+  return `${text.slice(0, 217)}...`;
 }
 
 function feedUrl() {
@@ -143,48 +172,60 @@ function renderMeta(meta) {
 }
 
 function renderCards(items) {
-  if (!items.length) {
+  const safeItems = Array.isArray(items) ? items : [];
+  if (!safeItems.length) {
     el.feed.innerHTML = `<article class="card"><h3>No markets match this filter.</h3></article>`;
     return;
   }
 
-  el.feed.innerHTML = items
-    .map((item) => {
-      const rankScore = (item.score?.civicScore || 0) + (item.score?.newsworthinessScore || 0);
-      const badgeClass = item.isCurated ? "badge" : "badge rejected";
-      const badgeText = item.isCurated ? titleCaseCategory(item.score?.category) : "Rejected";
+  const [leadItem, ...remainingItems] = safeItems;
 
-      return `
-        <article class="card">
-          <div class="top">
-            <span class="${badgeClass}">${badgeText}</span>
-            <span class="chip">Score ${rankScore}</span>
+  const renderCard = (item, isLead = false) => {
+    const badgeCategory = titleCaseCategory(item.score?.category);
+    const frontPageScore = fmtScore(resolveFrontPageScore(item));
+    const decision = formatDecisionReason(item.decisionReason);
+    const deck = truncateDescription(item.description);
+    const titleTag = isLead ? "h2" : "h3";
+
+    return `
+      <article class="card ${isLead ? "lead-card" : "story-card"}">
+        <div class="top">
+          <div class="badge-row">
+            ${isLead ? `<span class="lead-kicker">Front Page Lead</span>` : ""}
+            <span class="badge">${badgeCategory}</span>
+            ${item.isCurated ? "" : `<span class="badge rejected">Rejected</span>`}
           </div>
-          <h3>${item.question}</h3>
-          <div class="stats">
-            <span><strong>Volume:</strong> ${fmtNum(item.volume)}</span>
-            <span><strong>Liquidity:</strong> ${fmtNum(item.liquidity)}</span>
-            <span><strong>Open interest:</strong> ${fmtNum(item.openInterest)}</span>
-            <span><strong>Ends:</strong> ${fmtDate(item.endDate)}</span>
-          </div>
-          <div class="stats">
-            <span><strong>Decision:</strong> ${item.decisionReason}</span>
-          </div>
-          <div class="actions">
-            <a
-              class="market-link"
-              data-market-id="${item.id}"
-              data-market-question="${encodeURIComponent(item.question)}"
-              data-market-category="${item.score?.category || "other"}"
-              href="${item.url}"
-              target="_blank"
-              rel="noreferrer"
-            >Open on Polymarket</a>
-          </div>
-        </article>
-      `;
-    })
-    .join("");
+          <span class="score-pill">Front Page ${frontPageScore}</span>
+        </div>
+        <${titleTag}>${item.question}</${titleTag}>
+        ${deck ? `<p class="deck">${deck}</p>` : ""}
+        <div class="stats">
+          <span><strong>Volume:</strong> ${fmtNum(item.volume)}</span>
+          <span><strong>Liquidity:</strong> ${fmtNum(item.liquidity)}</span>
+          <span><strong>Ends:</strong> ${fmtDate(item.endDate)}</span>
+        </div>
+        <p class="decision"><strong>Decision:</strong> ${decision}</p>
+        <div class="actions">
+          <a
+            class="market-link"
+            data-market-id="${item.id}"
+            data-market-question="${encodeURIComponent(item.question)}"
+            data-market-category="${item.score?.category || "other"}"
+            href="${item.url}"
+            target="_blank"
+            rel="noreferrer"
+          >Open on Polymarket</a>
+        </div>
+      </article>
+    `;
+  };
+
+  const gridMarkup =
+    remainingItems.length > 0
+      ? `<div class="feed-grid">${remainingItems.map((item) => renderCard(item, false)).join("")}</div>`
+      : "";
+
+  el.feed.innerHTML = `${renderCard(leadItem, true)}${gridMarkup}`;
 }
 
 function setStatus(message) {

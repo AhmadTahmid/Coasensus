@@ -112,6 +112,27 @@ interface SemanticAggregateRow {
   avg_total_ms: number;
 }
 
+interface FeedDiagnosticsCountsRow {
+  total: number;
+  curated: number;
+  rejected: number;
+}
+
+interface FeedDiagnosticsCategoryRow {
+  category: string | null;
+  curated: number;
+  rejected: number;
+}
+
+interface FeedDiagnosticsDecisionReasonRow {
+  decision_reason: string | null;
+  count: number;
+}
+
+interface FeedDiagnosticsReasonCodesRow {
+  reason_codes_json: string | null;
+}
+
 const CATEGORY_SET = new Set<MarketCategory>([
   "politics",
   "economy",
@@ -451,6 +472,125 @@ async function handleAdminRefresh(
   }
 }
 
+async function handleFeedDiagnostics(
+  request: Request,
+  url: URL,
+  env: Env,
+  origin: string
+): Promise<Response> {
+  if (!hasRefreshAccess(request, url, env)) {
+    return json(401, { error: "Unauthorized feed diagnostics request" }, origin);
+  }
+
+  try {
+    const countsQuery = `
+      SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN is_curated = 1 THEN 1 ELSE 0 END) AS curated,
+        SUM(CASE WHEN is_curated = 0 THEN 1 ELSE 0 END) AS rejected
+      FROM curated_feed
+    `;
+
+    const categoryCountsQuery = `
+      SELECT
+        COALESCE(NULLIF(TRIM(category), ''), 'other') AS category,
+        SUM(CASE WHEN is_curated = 1 THEN 1 ELSE 0 END) AS curated,
+        SUM(CASE WHEN is_curated = 0 THEN 1 ELSE 0 END) AS rejected
+      FROM curated_feed
+      GROUP BY COALESCE(NULLIF(TRIM(category), ''), 'other')
+      ORDER BY (curated + rejected) DESC, category ASC
+    `;
+
+    const topDecisionReasonsQuery = `
+      SELECT
+        COALESCE(NULLIF(TRIM(decision_reason), ''), 'unknown') AS decision_reason,
+        COUNT(*) AS count
+      FROM curated_feed
+      GROUP BY COALESCE(NULLIF(TRIM(decision_reason), ''), 'unknown')
+      ORDER BY count DESC, decision_reason ASC
+      LIMIT 10
+    `;
+
+    const [countsRow, categoryRows, decisionReasonRows, reasonCodesRows] = await Promise.all([
+      env.DB.prepare(countsQuery).first<FeedDiagnosticsCountsRow>(),
+      env.DB.prepare(categoryCountsQuery).all<FeedDiagnosticsCategoryRow>(),
+      env.DB.prepare(topDecisionReasonsQuery).all<FeedDiagnosticsDecisionReasonRow>(),
+      env.DB.prepare("SELECT reason_codes_json FROM curated_feed").all<FeedDiagnosticsReasonCodesRow>(),
+    ]);
+
+    const counts = {
+      total: Number(countsRow?.total ?? 0),
+      curated: Number(countsRow?.curated ?? 0),
+      rejected: Number(countsRow?.rejected ?? 0),
+    };
+
+    const categoryTotals = new Map<MarketCategory, { curated: number; rejected: number }>();
+    for (const row of categoryRows.results ?? []) {
+      const category = toCategory((row.category ?? "other").trim());
+      const curated = Number(row.curated ?? 0);
+      const rejected = Number(row.rejected ?? 0);
+      const current = categoryTotals.get(category);
+      if (current) {
+        current.curated += curated;
+        current.rejected += rejected;
+      } else {
+        categoryTotals.set(category, { curated, rejected });
+      }
+    }
+
+    const categoryCounts = [...categoryTotals.entries()]
+      .map(([category, value]) => ({
+        category,
+        curated: value.curated,
+        rejected: value.rejected,
+        total: value.curated + value.rejected,
+      }))
+      .sort((a, b) => b.total - a.total || a.category.localeCompare(b.category));
+
+    const topDecisionReasons = (decisionReasonRows.results ?? []).map((row) => ({
+      decisionReason: (row.decision_reason ?? "unknown").trim() || "unknown",
+      count: Number(row.count ?? 0),
+    }));
+
+    const reasonCodeCounts = new Map<string, number>();
+    for (const row of reasonCodesRows.results ?? []) {
+      for (const reasonCode of parseReasonCodes(row.reason_codes_json)) {
+        const normalizedCode = reasonCode.trim();
+        if (!normalizedCode) {
+          continue;
+        }
+        reasonCodeCounts.set(normalizedCode, (reasonCodeCounts.get(normalizedCode) ?? 0) + 1);
+      }
+    }
+
+    const topReasonCodes = [...reasonCodeCounts.entries()]
+      .map(([reasonCode, count]) => ({ reasonCode, count }))
+      .sort((a, b) => b.count - a.count || a.reasonCode.localeCompare(b.reasonCode))
+      .slice(0, 15);
+
+    return json(
+      200,
+      {
+        counts,
+        categoryCounts,
+        topDecisionReasons,
+        topReasonCodes,
+        generatedAt: new Date().toISOString(),
+      },
+      origin
+    );
+  } catch (error) {
+    return json(
+      503,
+      {
+        error: "Feed diagnostics unavailable",
+        detail: asErrorMessage(error),
+      },
+      origin
+    );
+  }
+}
+
 async function handleAnalyticsPost(request: Request, env: Env, origin: string): Promise<Response> {
   try {
     const body = asRecord(await request.json());
@@ -685,6 +825,10 @@ export default {
       return handleSemanticMetrics(request, url, env, origin);
     }
 
+    if (pathname === "/admin/feed-diagnostics" && request.method === "GET") {
+      return handleFeedDiagnostics(request, url, env, origin);
+    }
+
     if (request.method !== "GET" && request.method !== "POST") {
       return json(405, { error: "Only GET/POST supported" }, origin);
     }
@@ -698,6 +842,7 @@ export default {
           "/api/feed?page=1&pageSize=20&sort=score",
           "/api/admin/refresh-feed",
           "/api/admin/semantic-metrics",
+          "/api/admin/feed-diagnostics",
           "/api/analytics",
         ],
       },

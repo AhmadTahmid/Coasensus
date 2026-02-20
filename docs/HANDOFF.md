@@ -145,6 +145,14 @@ This file is the explicit handoff checkpoint.
    - first scheduled monitor run succeeded (`22230889095`)
    - latest CI run succeeded (`22230993533`)
    - latest Deploy Cloudflare run succeeded (`22230993568`)
+22. Parallel sprint checkpoint (2026-02-20):
+   - Added admin diagnostics endpoint: `GET /api/admin/feed-diagnostics` (token-protected)
+   - Enhanced web feed presentation with lead card + frontPageScore emphasis
+   - Added staging monitor workflow: `.github/workflows/monitor-staging.yml`
+   - Monitor script now emits explicit success flag and richer failure context
+23. Validation checkpoint for parallel sprint:
+   - `npm run check` passed
+   - workflow YAML parsing passed for production and staging monitor workflows
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
