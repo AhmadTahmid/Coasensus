@@ -55,6 +55,7 @@
 - [x] `TUNE-001` Prioritize LLM candidate selection and add category-specific sports/entertainment semantic thresholds
 - [x] `TUNE-002` Validate tuning impact on staging after a full refresh cycle
 - [x] `TUNE-003` Roll out semantic tuning pass #1 to production and verify monitor + feed composition
+- [x] `TUNE-004` Add topic/event de-dup pass (staging verified)
 
 ## Suggested assignment
 - Agent 1: EPIC-00

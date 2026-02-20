@@ -376,3 +376,31 @@
    - sports/entertainment suppression confirmed in production:
      - `sports`: `206` total, `0` curated
      - `entertainment`: `96` total, `0` curated.
+147. Started next milestone: topic/event de-dup lane (`agent/topic-dedup-pass1`).
+   - Added diversity pass in Worker curation pipeline (`applyTopicDeduplication`) to demote near-duplicate story variants after score ordering.
+   - Duplicate demotions use explicit reasons:
+     - `excluded_topic_duplicate_of_<anchor_market_id>`
+     - reason code suffix `duplicate_of_<anchor_market_id>`.
+148. Added configurable topic-dedup controls:
+   - `COASENSUS_TOPIC_DEDUP_ENABLED`
+   - `COASENSUS_TOPIC_DEDUP_SIMILARITY`
+   - `COASENSUS_TOPIC_DEDUP_MIN_SHARED_TOKENS`
+   - `COASENSUS_TOPIC_DEDUP_MAX_PER_CLUSTER`
+   - Synced in both `wrangler.api.jsonc` and `wrangler.api.ci.jsonc` for root/staging/production.
+149. Added execution-memory guardrail doc:
+   - `docs/ROADMAP_QUEUE.md` with `Now / Next / Later` queue to keep momentum without losing deferred tasks.
+150. Validation for topic dedup milestone:
+   - `npm run check` => success
+   - `npx wrangler deploy --dry-run --config infra/cloudflare/wrangler.api.ci.jsonc --env staging` => success.
+151. Staging rollout for topic dedup:
+   - deployed Worker version `a5edbc64-8169-4e94-a10e-b667da8f3865`
+   - post-refresh monitor run `22239209118` => success
+   - latest staging refresh snapshot:
+     - `runId 2026-02-20T20-00-13-558Z`
+     - `llmEnabled=true`
+     - `llmAttempts=1`
+     - `llmFailures=0`.
+152. Staging impact from topic dedup (post-refresh):
+   - curated total reduced from `145` to `84`
+   - top-20 mix improved toward story diversity (`politics: 17`, `geopolitics: 3`)
+   - dedup exclusions observed: `133` rows with `excluded_topic_duplicate_of_*`.
