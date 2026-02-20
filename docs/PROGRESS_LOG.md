@@ -147,3 +147,28 @@
    - model: `gemini-2.5-flash`
    - base URL: `https://generativelanguage.googleapis.com/v1beta`
 79. Ran full workspace validation successfully after provider changes (`npm run check`).
+80. Enabled Gemini provider in staging environment config:
+   - `COASENSUS_LLM_ENABLED=1`
+   - `COASENSUS_LLM_PROVIDER=gemini`
+   - `COASENSUS_LLM_MODEL=gemini-2.5-flash`
+   - `COASENSUS_LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta`
+81. Deployed staging Worker with Gemini settings (version `2b26deea-a05e-42ac-8012-70c14a6ad973`) and executed authenticated refresh.
+82. Initial Gemini run metrics (prompt `v1-gemini-001`) showed provider quota/rate-limit behavior:
+   - `llmEvaluated=8`
+   - `llmFailures=792`
+   - `heuristicEvaluated=792`
+83. Tuned staging cap for stable operation:
+   - `COASENSUS_LLM_MAX_MARKETS_PER_RUN=8`
+   - prompt version bumped to `v1-gemini-002`
+84. Redeployed staging Worker (version `c15a274d-bf96-4e24-ae36-96983ebca18c`) and verified clean refresh:
+   - `llmEvaluated=8`
+   - `llmFailures=0`
+   - `heuristicEvaluated=792`
+   - total runtime reduced to ~22s
+85. Completed SEM-006 comparison snapshot (staging):
+   - Baseline (heuristic-only): `269 curated / 531 rejected`
+   - Gemini-mixed run (8 LLM + 792 heuristic): `269 curated / 531 rejected`
+   - Cache model distribution for prompt `v1-gemini-002`: `8 gemini-2.5-flash`, `792 heuristic-v1`
+86. Verified live staging feed remains healthy after Gemini enablement:
+   - `scoreFormula=front_page_score_v1`
+   - feed returns non-zero `frontPageScore` values.

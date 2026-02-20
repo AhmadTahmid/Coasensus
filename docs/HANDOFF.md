@@ -97,9 +97,14 @@ This file is the explicit handoff checkpoint.
    - semantic classifier supports `openai` and `gemini` providers
    - configure via `COASENSUS_LLM_PROVIDER`
    - Gemini target profile: `gemini-2.5-flash` + `generativelanguage.googleapis.com/v1beta`
-11. Pending next milestone:
-   - enable LLM in staging with `COASENSUS_LLM_API_KEY`
+11. Staging Gemini status:
+   - staging env currently set to Gemini (`COASENSUS_LLM_ENABLED=1`, provider `gemini`)
+   - prompt version: `v1-gemini-002`
+   - cap: `COASENSUS_LLM_MAX_MARKETS_PER_RUN=8` (keeps refresh stable on current quota)
+   - recent clean semantic metrics: `llmEvaluated=8`, `llmFailures=0`, `heuristicEvaluated=792`
+12. Pending next milestone:
    - tune semantic thresholds and ranking weights using observed outcomes
+   - increase LLM cap gradually if/when provider quota allows
    - add semantic telemetry/reporting (`SEM-008`)
 
 ## How to start a fresh Codex session
