@@ -422,3 +422,17 @@
    - `npm run --workspace @coasensus/web test` => success
    - `npm run --workspace @coasensus/web typecheck` => success
    - `npm run check` => success.
+159. Staging rollout validation for search milestone:
+   - deployed `coasensus-api-staging` version `9400852c-f74b-4626-926b-12c5d7793400`
+   - smoke check `GET /api/feed?...&q=election` => `200`, `meta.searchQuery="election"`, non-zero results.
+160. Promoted search milestone to `main`:
+   - merged branch `agent/ui-search-pass1` as commit `a9b29ed`
+   - CI run `22239925428` => success
+   - Deploy Cloudflare run `22239925419` => success.
+161. Post-deploy production + staging verification:
+   - production search smoke: `https://coasensus.com/api/feed?...&q=election` => `200`, `totalItems=59`
+   - staging search smoke: `https://staging.coasensus.com/api/feed?...&q=election` => `200`, `totalItems=59`
+   - manual monitor runs succeeded:
+     - production `22239978136`
+     - staging `22239979666`
+   - semantic-metrics endpoint checks remained healthy in both monitor runs.

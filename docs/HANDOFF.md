@@ -230,6 +230,15 @@ This file is the explicit handoff checkpoint.
    - web unit tests updated for query-string builder search behavior.
 41. Next recommended milestone:
    - implement `MILESTONE-REGION-003` (expose `geo_tag`, add region filter in API/UI, then tune category x region composition).
+42. Search milestone promotion complete:
+   - merged to `main` as `a9b29ed`
+   - CI + Deploy Cloudflare green (`22239925428`, `22239925419`).
+43. Post-deploy verification:
+   - production and staging search smoke checks (`q=election`) both return non-zero items and `meta.searchQuery="election"`
+   - manual monitor workflows succeeded:
+     - production `22239978136`
+     - staging `22239979666`
+   - `/api/admin/semantic-metrics` remained healthy in both environments via monitor checks.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
