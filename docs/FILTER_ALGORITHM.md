@@ -45,11 +45,15 @@ Semantic layer defaults:
 - `COASENSUS_LLM_MODEL=gpt-4o-mini`
 - `COASENSUS_LLM_PROMPT_VERSION=v1`
 - `COASENSUS_LLM_MIN_NEWS_SCORE=55`
+- `COASENSUS_LLM_MIN_NEWS_SCORE_SPORTS=72`
+- `COASENSUS_LLM_MIN_NEWS_SCORE_ENTERTAINMENT=78`
 - `COASENSUS_LLM_MAX_MARKETS_PER_RUN=150`
 
 Note:
 - `COASENSUS_LLM_MAX_MARKETS_PER_RUN` is an **attempt cap** (not success cap).
 - If provider calls fail, remaining markets fall back to heuristic classification.
+- Cache misses are prioritized for LLM by civic/market-signal strength (volume, liquidity, recency, category keywords), so capped LLM calls are spent on higher-impact candidates first.
+- Markets matching strict meme tokens are short-circuited to heuristic classification and do not consume LLM budget.
 
 Front-page ranking defaults:
 - `COASENSUS_FRONTPAGE_W1=0.6`
@@ -142,13 +146,17 @@ A market is **curated** only if all are true:
 2. Not flagged as meme by semantic layer (`isMeme=false`).
 3. `civicScore >= 2`
 4. `newsworthinessScore >= COASENSUS_LLM_MIN_NEWS_SCORE` (default `55`)
+5. Category-specific floor is applied on top of baseline:
+   - `sports`: `max(COASENSUS_LLM_MIN_NEWS_SCORE, COASENSUS_LLM_MIN_NEWS_SCORE_SPORTS)`
+   - `entertainment`: `max(COASENSUS_LLM_MIN_NEWS_SCORE, COASENSUS_LLM_MIN_NEWS_SCORE_ENTERTAINMENT)`
 
 Otherwise it is **rejected**.
 
 Main rejection reasons:
 - `excluded_<token>` (hard exclusion)
 - `excluded_llm_meme` (semantic layer flagged as meme)
-- `excluded_semantic_below_threshold` (did not reach score thresholds)
+- `excluded_semantic_below_civic_threshold` (did not meet civic threshold)
+- `excluded_semantic_news_threshold_<category>` (did not meet baseline/category news threshold)
 
 ## 9. What is a "rejected market"?
 

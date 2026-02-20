@@ -313,3 +313,45 @@
 136. Staging profile remains healthy and aligned:
    - monitor run `22234968743` => success
    - latest staging telemetry shows `llmEnabled: true`, provider `gemini`, model `gemini-2.5-flash`.
+137. Semantic tuning pass #1 implementation (branch `agent/semantic-tuning-pass1`):
+   - added LLM candidate prioritization for cache misses so capped LLM attempts are spent on higher-signal markets first (volume/liquidity/recency/category hints)
+   - strict meme-token candidates are now short-circuited to heuristic classification and do not consume LLM attempt budget
+   - added category-specific news floors:
+     - `COASENSUS_LLM_MIN_NEWS_SCORE_SPORTS` (default `72`)
+     - `COASENSUS_LLM_MIN_NEWS_SCORE_ENTERTAINMENT` (default `78`)
+   - curation now emits more specific rejection reasons for civic/news threshold misses.
+138. Semantic tuning config/docs sync:
+   - updated `infra/cloudflare/wrangler.api.jsonc` + `infra/cloudflare/wrangler.api.ci.jsonc` with new category-threshold vars across root/staging/production
+   - updated `docs/FILTER_ALGORITHM.md` with new gating behavior and LLM-budget prioritization logic.
+139. Validation for semantic tuning pass #1:
+   - `npm run check` => success
+   - `npx wrangler deploy --dry-run --config infra/cloudflare/wrangler.api.ci.jsonc --env staging` => success.
+140. Staging deploy for semantic tuning pass #1:
+   - deployed `coasensus-api-staging` with version `4ea11048-538b-4c2f-b710-ecc2238b8174`
+   - endpoint checks:
+     - `GET /api/health` => `200`
+     - `GET /api/feed?page=1&pageSize=5&sort=score` => `200`
+     - `GET /api/admin/semantic-metrics?limit=1` without token => `401` (expected).
+141. Post-deploy monitor status:
+   - monitor staging run `22235817443` => success
+   - monitor production run `22235817423` => success
+   - latest staging telemetry snapshot still points to pre-deploy refresh (`fetchedAt 2026-02-20T18:00:25.942Z`), so tuning impact verification requires next staging refresh cycle.
+142. Post-refresh verification for semantic tuning pass #1 (staging):
+   - monitor staging run `22236290635` => success
+   - latest telemetry snapshot now reflects post-deploy run (`runId 2026-02-20T18-30-16-036Z`, `fetchedAt 2026-02-20T18:30:16.036Z`)
+   - semantic telemetry remained healthy:
+     - `llmEnabled: true`
+     - `llmAttempts: 1`
+     - `llmEvaluated: 1`
+     - `llmFailures: 0`
+143. Feed composition impact after tuning (staging):
+   - curated total dropped from `273` to `218` after refresh
+   - top 20 feed categories became fully civic (`politics: 20`)
+   - category distribution (curated set):
+     - `politics: 190`
+     - `economy: 13`
+     - `geopolitics: 8`
+     - `tech_ai: 6`
+     - `sports: 1`
+     - `entertainment: 0`
+   - sports gating confirmed: `207` sports markets total, `206` rejected (mostly `excluded_semantic_news_threshold_sports`), `1` curated with news score `75`.
