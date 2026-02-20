@@ -5,6 +5,9 @@ type MarketCategory =
   | "geopolitics"
   | "public_health"
   | "climate_energy"
+  | "tech_ai"
+  | "sports"
+  | "entertainment"
   | "other";
 
 interface Market {
@@ -79,6 +82,13 @@ interface RefreshEnv {
   COASENSUS_BOUNCER_MIN_LIQUIDITY?: string;
   COASENSUS_BOUNCER_MIN_HOURS_TO_END?: string;
   COASENSUS_BOUNCER_MAX_MARKET_AGE_DAYS?: string;
+  COASENSUS_LLM_ENABLED?: string;
+  COASENSUS_LLM_MODEL?: string;
+  COASENSUS_LLM_BASE_URL?: string;
+  COASENSUS_LLM_API_KEY?: string;
+  COASENSUS_LLM_PROMPT_VERSION?: string;
+  COASENSUS_LLM_MIN_NEWS_SCORE?: string;
+  COASENSUS_LLM_MAX_MARKETS_PER_RUN?: string;
 }
 
 interface FetchOptions {
@@ -110,6 +120,43 @@ interface CurationResult {
   rejected: CuratedFeedItem[];
 }
 
+interface SemanticClassification {
+  isMeme: boolean;
+  newsworthinessScore: number;
+  category: MarketCategory;
+  geoTag: string;
+  confidence: number;
+  modelName: string;
+  promptVersion: string;
+  source: "llm" | "heuristic" | "cache";
+}
+
+interface CachedSemanticRow {
+  market_id: string;
+  prompt_version: string;
+  fingerprint: string;
+  is_meme: number;
+  newsworthiness_score: number;
+  category: string;
+  geo_tag: string;
+  confidence: number | null;
+  model_name: string;
+  raw_json: string;
+}
+
+interface SemanticEnrichmentResult {
+  byMarketId: Map<string, SemanticClassification>;
+  metrics: {
+    llmEnabled: boolean;
+    promptVersion: string;
+    cacheHits: number;
+    cacheMisses: number;
+    llmEvaluated: number;
+    heuristicEvaluated: number;
+    llmFailures: number;
+  };
+}
+
 export interface FeedCounts {
   total: number;
   curated: number;
@@ -126,6 +173,15 @@ export interface RefreshSummary {
   droppedCount: number;
   curatedCount: number;
   rejectedCount: number;
+  semantic: {
+    llmEnabled: boolean;
+    promptVersion: string;
+    cacheHits: number;
+    cacheMisses: number;
+    llmEvaluated: number;
+    heuristicEvaluated: number;
+    llmFailures: number;
+  };
   metrics: {
     totalMs: number;
     fetchMs: number;
@@ -146,6 +202,12 @@ const DEFAULT_FETCH_OPTIONS: FetchOptions = {
   minHoursToEnd: 2,
   maxMarketAgeDays: 365,
 };
+
+const DEFAULT_LLM_MODEL = "gpt-4o-mini";
+const DEFAULT_LLM_BASE_URL = "https://api.openai.com/v1";
+const DEFAULT_LLM_PROMPT_VERSION = "v1";
+const DEFAULT_LLM_MIN_NEWS_SCORE = 55;
+const DEFAULT_LLM_MAX_MARKETS_PER_RUN = 150;
 
 const EXCLUSION_TOKENS = [
   "meme",
@@ -181,6 +243,8 @@ const EXCLUSION_TOKENS = [
   "crypto memecoin",
 ];
 
+const STRICT_EXCLUSION_TOKENS = ["meme", "doge", "pepe", "crypto memecoin", "gossip"];
+
 const CATEGORY_MAP: Record<MarketCategory, string[]> = {
   politics: ["election", "vote", "senate", "house", "president", "prime minister"],
   economy: ["inflation", "gdp", "recession", "unemployment", "federal reserve", "interest rate"],
@@ -188,6 +252,9 @@ const CATEGORY_MAP: Record<MarketCategory, string[]> = {
   geopolitics: ["war", "conflict", "ceasefire", "sanction", "nato", "china", "russia", "taiwan"],
   public_health: ["pandemic", "vaccine", "cdc", "outbreak", "public health", "hospital", "epidemic"],
   climate_energy: ["climate", "emissions", "oil", "gas", "renewable", "energy", "carbon"],
+  tech_ai: ["ai", "artificial intelligence", "openai", "anthropic", "google", "chip", "gpu", "robotics"],
+  sports: ["sports", "tournament", "league", "championship", "playoff", "final"],
+  entertainment: ["movie", "music", "celebrity", "award", "oscar", "grammy", "tv"],
   other: [],
 };
 
@@ -197,6 +264,72 @@ function asPositiveInt(value: string | undefined, fallback: number, min: number,
     return fallback;
   }
   return Math.min(max, Math.max(min, Math.floor(parsed)));
+}
+
+function asBool(value: string | undefined, fallback: boolean): boolean {
+  if (value === undefined) {
+    return fallback;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+  return fallback;
+}
+
+function asFiniteNumber(value: string | undefined, fallback: number, min: number, max: number): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function normalizeGeoTag(value: string | null | undefined): string {
+  const candidate = (value ?? "").trim();
+  if (!candidate || candidate.toLowerCase() === "undefined" || candidate.toLowerCase() === "null") {
+    return "World";
+  }
+  return candidate;
+}
+
+function toMarketCategory(value: string): MarketCategory {
+  const normalized = value.trim().toLowerCase().replace(/[\s/]+/g, "_");
+  if (
+    normalized === "politics" ||
+    normalized === "economy" ||
+    normalized === "policy" ||
+    normalized === "geopolitics" ||
+    normalized === "public_health" ||
+    normalized === "climate_energy" ||
+    normalized === "tech_ai" ||
+    normalized === "sports" ||
+    normalized === "entertainment" ||
+    normalized === "other"
+  ) {
+    return normalized;
+  }
+
+  if (normalized === "tech" || normalized === "ai" || normalized === "science") {
+    return "tech_ai";
+  }
+  if (normalized === "public_health" || normalized === "health") {
+    return "public_health";
+  }
+  if (normalized === "climate" || normalized === "energy" || normalized === "climate_and_energy") {
+    return "climate_energy";
+  }
+  if (normalized === "culture") {
+    return "entertainment";
+  }
+  if (normalized === "world" || normalized === "global") {
+    return "other";
+  }
+
+  return "other";
 }
 
 function resolveFetchOptions(env: RefreshEnv): FetchOptions {
@@ -484,6 +617,433 @@ function normalizeActiveMarkets(rawMarkets: RawPolymarketMarket[]): Normalizatio
   return { markets, dropped };
 }
 
+function clampInt(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, Math.round(value)));
+}
+
+function fingerprintMarket(market: Market, promptVersion: string): string {
+  const input = `${promptVersion}|${market.question.toLowerCase()}|${(market.description ?? "").toLowerCase()}|${market.tags
+    .join(",")
+    .toLowerCase()}`;
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = (hash + (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24)) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0");
+}
+
+function detectGeoTag(corpus: string): string {
+  if (/\b(us|usa|united states|white house|congress|senate)\b/i.test(corpus)) {
+    return "US";
+  }
+  if (/\b(eu|europe|uk|britain|germany|france|italy)\b/i.test(corpus)) {
+    return "EU";
+  }
+  if (/\b(china|japan|korea|india|asia|taiwan)\b/i.test(corpus)) {
+    return "Asia";
+  }
+  if (/\b(africa|nigeria|kenya|south africa|ethiopia)\b/i.test(corpus)) {
+    return "Africa";
+  }
+  if (/\b(middle east|saudi|iran|israel|uae|qatar)\b/i.test(corpus)) {
+    return "MiddleEast";
+  }
+  return "World";
+}
+
+function buildSemanticRawPayload(classification: SemanticClassification): string {
+  return JSON.stringify({
+    is_meme: classification.isMeme,
+    newsworthiness_score: classification.newsworthinessScore,
+    category: classification.category,
+    geo_tag: classification.geoTag,
+    confidence: classification.confidence,
+  });
+}
+
+function normalizeSemanticPayload(
+  payload: Record<string, unknown>,
+  modelName: string,
+  promptVersion: string,
+  source: SemanticClassification["source"]
+): SemanticClassification {
+  const isMeme = payload.is_meme === true || payload.isMeme === true;
+  const rawScore = Number(payload.newsworthiness_score ?? payload.newsworthinessScore ?? 50);
+  const newsworthinessScore = clampInt(Number.isFinite(rawScore) ? rawScore : 50, 1, 100);
+  const category = toMarketCategory(String(payload.category ?? "other"));
+  const geoTag = normalizeGeoTag(String(payload.geo_tag ?? payload.geoTag ?? "World"));
+  const rawConfidence = Number(payload.confidence ?? 0.5);
+  const confidence = Number.isFinite(rawConfidence) ? Math.max(0, Math.min(1, rawConfidence)) : 0.5;
+
+  return {
+    isMeme,
+    newsworthinessScore,
+    category,
+    geoTag,
+    confidence,
+    modelName,
+    promptVersion,
+    source,
+  };
+}
+
+function heuristicSemanticClassification(market: Market, promptVersion: string): SemanticClassification {
+  const corpus = toCorpus(market);
+  const exclusionReason = isExcludedByToken(corpus);
+  const detected = detectCategory(corpus);
+  const baseNews = scoreNewsworthiness(market);
+  const boosted = baseNews * 20 + (detected.category !== "other" ? 10 : 0);
+  const newsworthinessScore = clampInt(boosted, 1, 100);
+
+  return {
+    isMeme: exclusionReason !== null,
+    newsworthinessScore,
+    category: detected.category,
+    geoTag: detectGeoTag(corpus),
+    confidence: 0.45,
+    modelName: "heuristic-v1",
+    promptVersion,
+    source: "heuristic",
+  };
+}
+
+function semanticJsonSchema(): Record<string, unknown> {
+  return {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      is_meme: { type: "boolean" },
+      newsworthiness_score: { type: "integer", minimum: 1, maximum: 100 },
+      category: {
+        type: "string",
+        enum: [
+          "politics",
+          "economy",
+          "policy",
+          "geopolitics",
+          "public_health",
+          "climate_energy",
+          "tech_ai",
+          "sports",
+          "entertainment",
+          "other",
+        ],
+      },
+      geo_tag: {
+        type: "string",
+        enum: ["US", "EU", "Asia", "Africa", "MiddleEast", "World"],
+      },
+      confidence: { type: "number", minimum: 0, maximum: 1 },
+    },
+    required: ["is_meme", "newsworthiness_score", "category", "geo_tag", "confidence"],
+  };
+}
+
+async function classifyMarketWithOpenAI(
+  env: RefreshEnv,
+  market: Market,
+  promptVersion: string
+): Promise<SemanticClassification> {
+  const apiKey = env.COASENSUS_LLM_API_KEY?.trim();
+  if (!apiKey) {
+    throw new Error("LLM enabled but COASENSUS_LLM_API_KEY missing");
+  }
+
+  const model = env.COASENSUS_LLM_MODEL?.trim() || DEFAULT_LLM_MODEL;
+  const baseUrl = normalizeBaseUrl(env.COASENSUS_LLM_BASE_URL?.trim() || DEFAULT_LLM_BASE_URL);
+
+  const systemPrompt =
+    "You are the Editor-in-Chief for a predictive news feed. Return JSON only. Classify if market is meme/noise, assign newsworthiness score (1-100), category, geo tag, and confidence.";
+
+  const body = {
+    model,
+    temperature: 0,
+    messages: [
+      { role: "system", content: systemPrompt },
+      {
+        role: "user",
+        content: JSON.stringify({
+          prompt_version: promptVersion,
+          market: {
+            id: market.id,
+            question: market.question,
+            description: market.description,
+            tags: market.tags,
+            liquidity: market.liquidity,
+            volume: market.volume,
+            open_interest: market.openInterest,
+            end_date: market.endDate,
+          },
+        }),
+      },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "coasensus_semantic_market",
+        strict: true,
+        schema: semanticJsonSchema(),
+      },
+    },
+  };
+
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(`LLM HTTP ${response.status}`);
+  }
+
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const content = payload.choices?.[0]?.message?.content;
+  if (!content || typeof content !== "string") {
+    throw new Error("LLM response missing message content");
+  }
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(content) as Record<string, unknown>;
+  } catch {
+    throw new Error("LLM response was not valid JSON");
+  }
+
+  return normalizeSemanticPayload(parsed, model, promptVersion, "llm");
+}
+
+async function classifyMarketSemantic(env: RefreshEnv, market: Market, promptVersion: string): Promise<SemanticClassification> {
+  let lastError: unknown;
+  const retries = 1;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await classifyMarketWithOpenAI(env, market, promptVersion);
+    } catch (error) {
+      lastError = error;
+      if (attempt < retries) {
+        await sleep(250 * (attempt + 1));
+      }
+    }
+  }
+
+  throw new Error(`LLM classification failed: ${String(lastError)}`);
+}
+
+async function loadSemanticCache(db: D1Database, marketIds: string[]): Promise<Map<string, CachedSemanticRow>> {
+  const map = new Map<string, CachedSemanticRow>();
+  const chunkSize = 80;
+
+  try {
+    for (let i = 0; i < marketIds.length; i += chunkSize) {
+      const chunk = marketIds.slice(i, i + chunkSize);
+      if (chunk.length === 0) {
+        continue;
+      }
+      const placeholders = chunk.map(() => "?").join(", ");
+      const sql = `
+        SELECT
+          market_id,
+          prompt_version,
+          fingerprint,
+          is_meme,
+          newsworthiness_score,
+          category,
+          geo_tag,
+          confidence,
+          model_name,
+          raw_json
+        FROM semantic_market_cache
+        WHERE market_id IN (${placeholders})
+      `;
+
+      const rows = await db.prepare(sql).bind(...chunk).all<CachedSemanticRow>();
+      for (const row of rows.results ?? []) {
+        map.set(row.market_id, row);
+      }
+    }
+  } catch (error) {
+    console.error("Semantic cache read failed, falling back to live classification", error);
+  }
+
+  return map;
+}
+
+function classificationFromCacheRow(row: CachedSemanticRow): SemanticClassification {
+  let payload: Record<string, unknown> = {};
+  try {
+    payload = JSON.parse(row.raw_json) as Record<string, unknown>;
+  } catch {
+    payload = {};
+  }
+  payload.is_meme = row.is_meme === 1;
+  payload.newsworthiness_score = row.newsworthiness_score;
+  payload.category = row.category;
+  payload.geo_tag = row.geo_tag;
+  payload.confidence = row.confidence ?? payload.confidence;
+  return normalizeSemanticPayload(payload, row.model_name, row.prompt_version, "cache");
+}
+
+async function upsertSemanticCache(
+  db: D1Database,
+  rows: Array<{
+    marketId: string;
+    promptVersion: string;
+    fingerprint: string;
+    classification: SemanticClassification;
+  }>
+): Promise<void> {
+  if (rows.length === 0) {
+    return;
+  }
+
+  const sql = `
+    INSERT INTO semantic_market_cache (
+      market_id,
+      prompt_version,
+      fingerprint,
+      is_meme,
+      newsworthiness_score,
+      category,
+      geo_tag,
+      confidence,
+      model_name,
+      raw_json,
+      created_at,
+      updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(market_id) DO UPDATE SET
+      prompt_version = excluded.prompt_version,
+      fingerprint = excluded.fingerprint,
+      is_meme = excluded.is_meme,
+      newsworthiness_score = excluded.newsworthiness_score,
+      category = excluded.category,
+      geo_tag = excluded.geo_tag,
+      confidence = excluded.confidence,
+      model_name = excluded.model_name,
+      raw_json = excluded.raw_json,
+      updated_at = excluded.updated_at
+  `;
+
+  const nowIso = new Date().toISOString();
+  const statements = rows.map((row) =>
+    db
+      .prepare(sql)
+      .bind(
+        row.marketId,
+        row.promptVersion,
+        row.fingerprint,
+        row.classification.isMeme ? 1 : 0,
+        row.classification.newsworthinessScore,
+        row.classification.category,
+        row.classification.geoTag,
+        row.classification.confidence,
+        row.classification.modelName,
+        buildSemanticRawPayload(row.classification),
+        nowIso,
+        nowIso
+      )
+  );
+
+  try {
+    await runBatchInChunks(db, statements, 25);
+  } catch (error) {
+    console.error("Semantic cache write failed", error);
+  }
+}
+
+async function enrichMarketsWithSemanticCache(env: RefreshEnv, markets: Market[]): Promise<SemanticEnrichmentResult> {
+  const promptVersion = env.COASENSUS_LLM_PROMPT_VERSION?.trim() || DEFAULT_LLM_PROMPT_VERSION;
+  const llmConfigured = asBool(env.COASENSUS_LLM_ENABLED, false) && Boolean(env.COASENSUS_LLM_API_KEY?.trim());
+  const maxLlmMarkets = asPositiveInt(
+    env.COASENSUS_LLM_MAX_MARKETS_PER_RUN,
+    DEFAULT_LLM_MAX_MARKETS_PER_RUN,
+    0,
+    2000
+  );
+
+  const byMarketId = new Map<string, SemanticClassification>();
+  const cacheRows = await loadSemanticCache(
+    env.DB,
+    markets.map((market) => market.id)
+  );
+
+  const toClassify: Array<{ market: Market; fingerprint: string }> = [];
+  let cacheHits = 0;
+
+  for (const market of markets) {
+    const fingerprint = fingerprintMarket(market, promptVersion);
+    const cached = cacheRows.get(market.id);
+    if (cached && cached.prompt_version === promptVersion && cached.fingerprint === fingerprint) {
+      byMarketId.set(market.id, classificationFromCacheRow(cached));
+      cacheHits += 1;
+      continue;
+    }
+    toClassify.push({ market, fingerprint });
+  }
+
+  const cacheMisses = toClassify.length;
+  const rowsToUpsert: Array<{
+    marketId: string;
+    promptVersion: string;
+    fingerprint: string;
+    classification: SemanticClassification;
+  }> = [];
+
+  let llmEvaluated = 0;
+  let heuristicEvaluated = 0;
+  let llmFailures = 0;
+
+  for (const candidate of toClassify) {
+    let classification: SemanticClassification;
+
+    if (llmConfigured && llmEvaluated < maxLlmMarkets) {
+      try {
+        classification = await classifyMarketSemantic(env, candidate.market, promptVersion);
+        llmEvaluated += 1;
+      } catch (error) {
+        llmFailures += 1;
+        console.error("LLM classify failed, using heuristic fallback", error);
+        classification = heuristicSemanticClassification(candidate.market, promptVersion);
+        heuristicEvaluated += 1;
+      }
+    } else {
+      classification = heuristicSemanticClassification(candidate.market, promptVersion);
+      heuristicEvaluated += 1;
+    }
+
+    byMarketId.set(candidate.market.id, classification);
+    rowsToUpsert.push({
+      marketId: candidate.market.id,
+      promptVersion,
+      fingerprint: candidate.fingerprint,
+      classification,
+    });
+  }
+
+  await upsertSemanticCache(env.DB, rowsToUpsert);
+
+  return {
+    byMarketId,
+    metrics: {
+      llmEnabled: llmConfigured,
+      promptVersion,
+      cacheHits,
+      cacheMisses,
+      llmEvaluated,
+      heuristicEvaluated,
+      llmFailures,
+    },
+  };
+}
+
 function toCorpus(market: Market): string {
   return `${market.question} ${market.description ?? ""} ${market.tags.join(" ")}`.toLowerCase();
 }
@@ -507,6 +1067,11 @@ function matchedKeywords(corpus: string, keywords: string[]): string[] {
 
 function isExcludedByToken(corpus: string): string | null {
   const token = EXCLUSION_TOKENS.find((item) => hasKeyword(corpus, item));
+  return token ? `excluded_${token.replace(/\s+/g, "_")}` : null;
+}
+
+function isStrictExcludedByToken(corpus: string): string | null {
+  const token = STRICT_EXCLUSION_TOKENS.find((item) => hasKeyword(corpus, item));
   return token ? `excluded_${token.replace(/\s+/g, "_")}` : null;
 }
 
@@ -562,50 +1127,63 @@ function scoreCivicRelevance(category: MarketCategory, keywords: string[]): numb
   return 0;
 }
 
-function createScoreBreakdown(market: Market): MarketScoreBreakdown {
+function createScoreBreakdown(market: Market, semantic: SemanticClassification): MarketScoreBreakdown {
   const corpus = toCorpus(market);
-  const detected = detectCategory(corpus);
-  const civicScore = scoreCivicRelevance(detected.category, detected.keywords);
-  const newsworthinessScore = scoreNewsworthiness(market);
-  const reasonCodes: string[] = [];
+  const keywordMatches = matchedKeywords(corpus, CATEGORY_MAP[semantic.category] ?? []);
+  const civicScore = scoreCivicRelevance(semantic.category, keywordMatches);
+  const newsworthinessScore = clampInt(semantic.newsworthinessScore, 1, 100);
+  const reasonCodes: string[] = [
+    `semantic_source_${semantic.source}`,
+    `semantic_category_${semantic.category}`,
+    `geo_${semantic.geoTag.toLowerCase()}`,
+  ];
 
-  if (detected.category !== "other") {
-    reasonCodes.push(`category_${detected.category}`);
-    for (const keyword of detected.keywords.slice(0, 2)) {
-      reasonCodes.push(`keyword_${keyword.replace(/\s+/g, "_")}`);
-    }
+  for (const keyword of keywordMatches.slice(0, 2)) {
+    reasonCodes.push(`keyword_${keyword.replace(/\s+/g, "_")}`);
   }
-  if (newsworthinessScore >= 2) {
-    reasonCodes.push("news_signal_volume_or_liquidity");
+  if (semantic.isMeme) {
+    reasonCodes.push("semantic_meme_flag");
   }
 
   return {
     civicScore,
     newsworthinessScore,
-    category: detected.category,
+    category: semantic.category,
     reasonCodes,
   };
 }
 
-function curateMarkets(markets: Market[]): CurationResult {
+function llmMinNewsScore(env: RefreshEnv): number {
+  return asFiniteNumber(env.COASENSUS_LLM_MIN_NEWS_SCORE, DEFAULT_LLM_MIN_NEWS_SCORE, 1, 100);
+}
+
+function curateMarkets(
+  markets: Market[],
+  semanticByMarketId: Map<string, SemanticClassification>,
+  env: RefreshEnv,
+  promptVersion: string
+): CurationResult {
   const curated: CuratedFeedItem[] = [];
   const rejected: CuratedFeedItem[] = [];
   const civicThreshold = 2;
-  const newsThreshold = 2;
+  const newsThreshold = llmMinNewsScore(env);
 
   for (const market of markets) {
     const corpus = toCorpus(market);
-    const exclusionReason = isExcludedByToken(corpus);
-    const score = createScoreBreakdown(market);
+    const exclusionReason = isStrictExcludedByToken(corpus);
+    const semantic = semanticByMarketId.get(market.id) ?? heuristicSemanticClassification(market, promptVersion);
+    const score = createScoreBreakdown(market, semantic);
 
     let isCurated = false;
-    let decisionReason = "excluded_below_threshold";
+    let decisionReason = "excluded_semantic_below_threshold";
 
     if (exclusionReason) {
       decisionReason = exclusionReason;
+    } else if (semantic.isMeme) {
+      decisionReason = "excluded_llm_meme";
     } else if (score.civicScore >= civicThreshold && score.newsworthinessScore >= newsThreshold) {
       isCurated = true;
-      decisionReason = "included_civic_and_news_threshold_met";
+      decisionReason = "included_semantic_threshold_met";
     }
 
     const item: CuratedFeedItem = {
@@ -753,7 +1331,13 @@ export async function refreshCuratedFeed(env: RefreshEnv): Promise<RefreshSummar
 
   const normalizeStarted = Date.now();
   const normalized = normalizeActiveMarkets(fetched.markets);
-  const curation = curateMarkets(normalized.markets);
+  const semantic = await enrichMarketsWithSemanticCache(env, normalized.markets);
+  const curation = curateMarkets(
+    normalized.markets,
+    semantic.byMarketId,
+    env,
+    semantic.metrics.promptVersion
+  );
   const normalizeMs = Date.now() - normalizeStarted;
 
   const runId = new Date().toISOString().replace(/[:.]/g, "-");
@@ -783,6 +1367,7 @@ export async function refreshCuratedFeed(env: RefreshEnv): Promise<RefreshSummar
     droppedCount: normalized.dropped + fetched.droppedByBouncer,
     curatedCount: curation.curated.length,
     rejectedCount: curation.rejected.length,
+    semantic: semantic.metrics,
     metrics: {
       totalMs: Date.now() - started,
       fetchMs,

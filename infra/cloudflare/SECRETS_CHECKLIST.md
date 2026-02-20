@@ -24,9 +24,17 @@ Use this list before enabling automated deploys.
      - `echo "<token>" | npx wrangler secret put COASENSUS_ADMIN_REFRESH_TOKEN --config infra/cloudflare/wrangler.api.jsonc --env production`
    - call refresh with header:
      - `curl -X POST -H "X-Admin-Token: <token>" https://coasensus.com/api/admin/refresh-feed`
+5. Optional LLM semantic filter secret:
+   - staging:
+     - `echo "<openai-api-key>" | npx wrangler secret put COASENSUS_LLM_API_KEY --config infra/cloudflare/wrangler.api.jsonc --env staging`
+   - production:
+     - `echo "<openai-api-key>" | npx wrangler secret put COASENSUS_LLM_API_KEY --config infra/cloudflare/wrangler.api.jsonc --env production`
+   - enable in vars:
+     - set `COASENSUS_LLM_ENABLED` to `1`
 
 ## Safety checks
 1. Never commit `.dev.vars` or secret plaintext files.
 2. Keep `database_id` values in config, but keep API keys only in secrets.
 3. Rotate API token after sharing access or suspected leakage.
 4. Rotate `COASENSUS_ADMIN_REFRESH_TOKEN` if exposed in logs/chat.
+5. Rotate `COASENSUS_LLM_API_KEY` if exposed.

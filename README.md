@@ -28,6 +28,7 @@ The goal is to keep civic-impact and newsworthy markets while removing meme/nois
 apps/web                # frontend feed/cards UI
 services/ingest-worker  # market ingestion jobs
 services/filter-engine  # filtering and scoring logic
+services/llm-editor     # semantic classifier + cache-aware enrichment
 packages/shared-types   # shared TypeScript contracts
 infra/cloudflare        # deployment setup
 infra/db                # database schema and migrations

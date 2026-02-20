@@ -5,6 +5,9 @@ export type MarketCategory =
   | "geopolitics"
   | "public_health"
   | "climate_energy"
+  | "tech_ai"
+  | "sports"
+  | "entertainment"
   | "other";
 
 export interface Market {
@@ -33,4 +36,3 @@ export interface CuratedFeedItem extends Market {
   decisionReason: string;
   score: MarketScoreBreakdown;
 }
-

@@ -20,7 +20,13 @@
     "COASENSUS_BOUNCER_MIN_VOLUME": "10000",
     "COASENSUS_BOUNCER_MIN_LIQUIDITY": "5000",
     "COASENSUS_BOUNCER_MIN_HOURS_TO_END": "2",
-    "COASENSUS_BOUNCER_MAX_MARKET_AGE_DAYS": "365"
+    "COASENSUS_BOUNCER_MAX_MARKET_AGE_DAYS": "365",
+    "COASENSUS_LLM_ENABLED": "0",
+    "COASENSUS_LLM_MODEL": "gpt-4o-mini",
+    "COASENSUS_LLM_BASE_URL": "https://api.openai.com/v1",
+    "COASENSUS_LLM_PROMPT_VERSION": "v1",
+    "COASENSUS_LLM_MIN_NEWS_SCORE": "55",
+    "COASENSUS_LLM_MAX_MARKETS_PER_RUN": "150"
   },
   "env": {
     "staging": {
@@ -43,7 +49,13 @@
         "COASENSUS_BOUNCER_MIN_VOLUME": "10000",
         "COASENSUS_BOUNCER_MIN_LIQUIDITY": "5000",
         "COASENSUS_BOUNCER_MIN_HOURS_TO_END": "2",
-        "COASENSUS_BOUNCER_MAX_MARKET_AGE_DAYS": "365"
+        "COASENSUS_BOUNCER_MAX_MARKET_AGE_DAYS": "365",
+        "COASENSUS_LLM_ENABLED": "0",
+        "COASENSUS_LLM_MODEL": "gpt-4o-mini",
+        "COASENSUS_LLM_BASE_URL": "https://api.openai.com/v1",
+        "COASENSUS_LLM_PROMPT_VERSION": "v1",
+        "COASENSUS_LLM_MIN_NEWS_SCORE": "55",
+        "COASENSUS_LLM_MAX_MARKETS_PER_RUN": "150"
       },
       "triggers": {
         "crons": ["*/30 * * * *"]
@@ -77,7 +89,13 @@
         "COASENSUS_BOUNCER_MIN_VOLUME": "10000",
         "COASENSUS_BOUNCER_MIN_LIQUIDITY": "5000",
         "COASENSUS_BOUNCER_MIN_HOURS_TO_END": "2",
-        "COASENSUS_BOUNCER_MAX_MARKET_AGE_DAYS": "365"
+        "COASENSUS_BOUNCER_MAX_MARKET_AGE_DAYS": "365",
+        "COASENSUS_LLM_ENABLED": "0",
+        "COASENSUS_LLM_MODEL": "gpt-4o-mini",
+        "COASENSUS_LLM_BASE_URL": "https://api.openai.com/v1",
+        "COASENSUS_LLM_PROMPT_VERSION": "v1",
+        "COASENSUS_LLM_MIN_NEWS_SCORE": "55",
+        "COASENSUS_LLM_MAX_MARKETS_PER_RUN": "150"
       },
       "triggers": {
         "crons": ["*/15 * * * *"]

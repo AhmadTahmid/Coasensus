@@ -1,4 +1,4 @@
-# Coasensus Filter Algorithm (Current v1)
+# Coasensus Filter Algorithm (Current v1.5)
 
 This document explains how Coasensus decides which Polymarket markets appear in the feed.
 
@@ -9,12 +9,14 @@ The feed should prioritize civic-impact and newsworthy markets, while filtering 
 ## 2. Pipeline overview
 
 1. Fetch active markets from Polymarket (`/markets`).
-2. Normalize raw API payloads into a consistent market shape.
-3. Apply hard exclusions (meme/sports/entertainment/noise tokens).
-4. Detect category and score civic relevance.
-5. Score newsworthiness from market activity and timing.
-6. Mark each market as `curated` (shown by default) or `rejected`.
-7. Persist full snapshot to D1 (`curated_feed`), including both curated and rejected rows.
+2. Apply objective "bouncer" pre-filters (volume, liquidity, time bounds).
+3. Normalize raw API payloads into a consistent market shape.
+4. Enrich each market with semantic metadata:
+   - cache lookup by `market_id + prompt_version + content fingerprint`
+   - optional LLM classification for cache misses
+   - heuristic fallback if LLM is disabled or fails
+5. Combine semantic output + deterministic checks to classify markets as curated or rejected.
+6. Persist full snapshot to D1 (`curated_feed`), including both curated and rejected rows.
 
 ## 3. Data ingestion scope
 
@@ -36,6 +38,13 @@ Bouncer pre-filter defaults (before semantic scoring):
 - `COASENSUS_BOUNCER_MIN_LIQUIDITY=5000`
 - `COASENSUS_BOUNCER_MIN_HOURS_TO_END=2`
 - `COASENSUS_BOUNCER_MAX_MARKET_AGE_DAYS=365`
+
+Semantic layer defaults:
+- `COASENSUS_LLM_ENABLED=0` (off by default)
+- `COASENSUS_LLM_MODEL=gpt-4o-mini`
+- `COASENSUS_LLM_PROMPT_VERSION=v1`
+- `COASENSUS_LLM_MIN_NEWS_SCORE=55`
+- `COASENSUS_LLM_MAX_MARKETS_PER_RUN=150`
 
 ## 4. Canonical market fields
 
@@ -64,10 +73,10 @@ Detection behavior:
 - Boundary-aware token matching (word/phrase boundaries)
 - Uses `question + description + tags` corpus
 
-Current exclusion themes:
-- Meme/crypto noise: `meme`, `doge`, `pepe`, `crypto memecoin`
-- Entertainment: `celebrity`, `james bond`, `oscar`, `grammy`, `movie`, `tv show`, `box office`
-- Sports: `super bowl`, `world cup`, `tournament`, `masters`, `golf`, `tennis`, `formula 1`, `f1`, `basketball`, `football`, `baseball`, `hockey`, `nba`, `nfl`, `mlb`, `nhl`, `ufc`, `soccer`
+Strict rejection tokens used at curation stage:
+- `meme`, `doge`, `pepe`, `crypto memecoin`, `gossip`
+
+Broader exclusion tokens are still used by heuristic semantic fallback to estimate meme risk when LLM is disabled/unavailable.
 
 ## 6. Category detection
 
@@ -78,6 +87,9 @@ If not hard-excluded, the algorithm assigns one category:
 - `geopolitics`
 - `public_health`
 - `climate_energy`
+- `tech_ai`
+- `sports`
+- `entertainment`
 - `other`
 
 Method:
@@ -106,25 +118,26 @@ This means category + multiple matching civic keywords increases score.
 
 ### Newsworthiness score
 
-Adds points from activity and urgency:
-- `+1` if `volume >= 25,000`
-- `+1` if `liquidity >= 10,000`
-- `+1` if `openInterest >= 5,000`
-- `+1` if `volume >= 250,000` OR `liquidity >= 50,000`
-- `+1` if market resolves within 14 days (future date window)
+When semantic enrichment is enabled, newsworthiness primarily comes from semantic score:
+- `newsworthinessScore` is normalized to `1..100`
+- source is one of: `cache`, `llm`, `heuristic`
+
+When LLM is disabled or unavailable, heuristic fallback uses deterministic volume/liquidity/time signals and maps them into `1..100`.
 
 ## 8. Inclusion vs rejection
 
 A market is **curated** only if all are true:
-1. Not hard-excluded.
-2. `civicScore >= 2`
-3. `newsworthinessScore >= 2`
+1. Not strict hard-excluded.
+2. Not flagged as meme by semantic layer (`isMeme=false`).
+3. `civicScore >= 2`
+4. `newsworthinessScore >= COASENSUS_LLM_MIN_NEWS_SCORE` (default `55`)
 
 Otherwise it is **rejected**.
 
 Main rejection reasons:
 - `excluded_<token>` (hard exclusion)
-- `excluded_below_threshold` (did not reach score thresholds)
+- `excluded_llm_meme` (semantic layer flagged as meme)
+- `excluded_semantic_below_threshold` (did not reach score thresholds)
 
 ## 9. What is a "rejected market"?
 
@@ -160,10 +173,10 @@ In practice, high-liquidity political/policy markets often rank first.
 
 ## 12. Current limitations (v1 heuristic)
 
-This is a deterministic keyword-and-threshold system, so:
+This is still mostly heuristic + prompt-based filtering, so:
 - It can still miss nuanced civic relevance.
 - It is not yet event-deduplicated (same event may appear in multiple variants).
-- It does not yet use source credibility, external news context, or semantic embeddings.
+- It does not yet use external source credibility scoring.
 
 ## 13. Source of truth in code
 

@@ -7,6 +7,9 @@ type MarketCategory =
   | "geopolitics"
   | "public_health"
   | "climate_energy"
+  | "tech_ai"
+  | "sports"
+  | "entertainment"
   | "other";
 
 type FeedSort = "score" | "volume" | "liquidity" | "endDate";
@@ -27,6 +30,13 @@ interface Env {
   COASENSUS_BOUNCER_MIN_LIQUIDITY?: string;
   COASENSUS_BOUNCER_MIN_HOURS_TO_END?: string;
   COASENSUS_BOUNCER_MAX_MARKET_AGE_DAYS?: string;
+  COASENSUS_LLM_ENABLED?: string;
+  COASENSUS_LLM_MODEL?: string;
+  COASENSUS_LLM_BASE_URL?: string;
+  COASENSUS_LLM_API_KEY?: string;
+  COASENSUS_LLM_PROMPT_VERSION?: string;
+  COASENSUS_LLM_MIN_NEWS_SCORE?: string;
+  COASENSUS_LLM_MAX_MARKETS_PER_RUN?: string;
 }
 
 interface CuratedFeedRow {
@@ -65,6 +75,9 @@ const CATEGORY_SET = new Set<MarketCategory>([
   "geopolitics",
   "public_health",
   "climate_energy",
+  "tech_ai",
+  "sports",
+  "entertainment",
   "other",
 ]);
 
