@@ -141,6 +141,10 @@ This file is the explicit handoff checkpoint.
 20. CI dependency resolution fix:
    - `filter-engine` build step added before tests so downstream import (`@coasensus/filter-engine`) resolves during ingest-worker suite.
    - full CI-equivalent Linux container run now passes from clean `dist/` state.
+21. Monitoring + pipeline status:
+   - first scheduled monitor run succeeded (`22230889095`)
+   - latest CI run succeeded (`22230993533`)
+   - latest Deploy Cloudflare run succeeded (`22230993568`)
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
