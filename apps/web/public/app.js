@@ -3,6 +3,7 @@ const state = {
   pageSize: 20,
   sort: "score",
   category: "",
+  search: "",
   includeRejected: false,
   totalPages: 1,
 };
@@ -38,6 +39,7 @@ const el = {
   status: document.getElementById("status"),
   meta: document.getElementById("meta"),
   pageInfo: document.getElementById("pageInfo"),
+  search: document.getElementById("search"),
   sort: document.getElementById("sort"),
   category: document.getElementById("category"),
   includeRejected: document.getElementById("includeRejected"),
@@ -144,6 +146,19 @@ function truncateDescription(value) {
   return `${text.slice(0, 217)}...`;
 }
 
+function normalizeSearchQuery(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 120);
+}
+
+function syncSearchStateFromInput() {
+  const normalized = normalizeSearchQuery(el.search.value);
+  el.search.value = normalized;
+  state.search = normalized;
+}
+
 function feedUrl() {
   const params = new URLSearchParams({
     page: String(state.page),
@@ -153,6 +168,9 @@ function feedUrl() {
 
   if (state.category) {
     params.set("category", state.category);
+  }
+  if (state.search) {
+    params.set("q", state.search);
   }
   if (state.includeRejected) {
     params.set("includeRejected", "1");
@@ -166,6 +184,7 @@ function renderMeta(meta) {
     `Total items: ${meta.totalItems}`,
     `Sort: ${meta.sort}`,
     `Category: ${meta.category || "all"}`,
+    `Search: ${meta.searchQuery || "none"}`,
     `Page size: ${meta.pageSize}`,
   ];
   el.meta.innerHTML = chips.map((item) => `<span class="chip">${item}</span>`).join("");
@@ -233,6 +252,7 @@ function setStatus(message) {
 }
 
 function syncControls() {
+  el.search.value = state.search;
   el.sort.value = state.sort;
   el.category.value = state.category;
   el.includeRejected.checked = state.includeRejected;
@@ -262,6 +282,7 @@ async function loadFeed() {
       pageSize: state.pageSize,
       sort: state.sort,
       category: state.category || "all",
+      search: state.search || "none",
       includeRejected: state.includeRejected,
       totalItems: data.meta?.totalItems ?? 0,
       itemCount: Array.isArray(data.items) ? data.items.length : 0,
@@ -285,6 +306,22 @@ async function loadFeed() {
   }
 }
 
+el.search.addEventListener("change", () => {
+  state.page = 1;
+  syncSearchStateFromInput();
+  track("search_changed", { search: state.search || "none", source: "change" });
+  void loadFeed();
+});
+
+el.search.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  state.page = 1;
+  syncSearchStateFromInput();
+  track("search_changed", { search: state.search || "none", source: "enter" });
+  void loadFeed();
+});
+
 el.sort.addEventListener("change", () => {
   state.page = 1;
   state.sort = el.sort.value;
@@ -307,6 +344,7 @@ el.includeRejected.addEventListener("change", () => {
 });
 
 el.refresh.addEventListener("click", () => {
+  syncSearchStateFromInput();
   track("refresh_clicked");
   void loadFeed();
 });

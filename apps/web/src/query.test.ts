@@ -15,6 +15,7 @@ describe("buildFeedQueryString", () => {
       pageSize: 50,
       sort: "volume",
       category: "policy",
+      search: " election forecast ",
       includeRejected: true,
     });
 
@@ -22,7 +23,12 @@ describe("buildFeedQueryString", () => {
     expect(query).toContain("pageSize=50");
     expect(query).toContain("sort=volume");
     expect(query).toContain("category=policy");
+    expect(query).toContain("q=election+forecast");
     expect(query).toContain("includeRejected=1");
   });
-});
 
+  it("omits empty search query", () => {
+    const query = buildFeedQueryString({ search: "   " });
+    expect(query).not.toContain("q=");
+  });
+});

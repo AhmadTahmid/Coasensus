@@ -404,3 +404,21 @@
    - curated total reduced from `145` to `84`
    - top-20 mix improved toward story diversity (`politics: 17`, `geopolitics: 3`)
    - dedup exclusions observed: `133` rows with `excluded_topic_duplicate_of_*`.
+153. Closed out post-merge production verification for topic dedup:
+   - monitor production workflow run `22239669070` => success
+   - latest production run snapshot: `runId 2026-02-20T20-15-11-010Z`, `totalItems: 83`, no semantic failures.
+154. Started `MILESTONE-UI-SEARCH-002` on branch `agent/ui-search-pass1`.
+155. API feed search support added:
+   - `GET /api/feed` now accepts `q` (and alias `search`)
+   - search applies case-insensitive matching against `question` and `description`
+   - `meta.searchQuery` returned in feed response for transparency.
+156. Web search controls added:
+   - new search input in `apps/web/public/index.html`
+   - UI now sends `q` query parameter, shows active search chip, and tracks `search_changed` analytics events.
+157. Query builder tests expanded:
+   - added positive test for normalized search query inclusion (`q=...`)
+   - added guard test for omitting empty search values.
+158. Validation for search milestone pass #1:
+   - `npm run --workspace @coasensus/web test` => success
+   - `npm run --workspace @coasensus/web typecheck` => success
+   - `npm run check` => success.

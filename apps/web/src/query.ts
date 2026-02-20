@@ -5,6 +5,7 @@ export interface FeedRequestOptions {
   pageSize: number;
   sort: FeedSort;
   category: string;
+  search: string;
   includeRejected: boolean;
 }
 
@@ -20,6 +21,7 @@ export function buildFeedQueryString(input: Partial<FeedRequestOptions>): string
   const pageSize = clampPositiveInt(input.pageSize ?? 20, 20);
   const sort = input.sort ?? "score";
   const category = (input.category ?? "").trim();
+  const search = (input.search ?? "").trim().replace(/\s+/g, " ").slice(0, 120);
   const includeRejected = Boolean(input.includeRejected);
 
   const params = new URLSearchParams();
@@ -29,9 +31,11 @@ export function buildFeedQueryString(input: Partial<FeedRequestOptions>): string
   if (category.length > 0) {
     params.set("category", category);
   }
+  if (search.length > 0) {
+    params.set("q", search);
+  }
   if (includeRejected) {
     params.set("includeRejected", "1");
   }
   return params.toString();
 }
-
