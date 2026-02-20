@@ -11,6 +11,8 @@ This file is the explicit handoff checkpoint.
 4. `docs/ISSUE_CHECKLIST.md`
 5. `COASENSUS_EXECUTION_PLAN.md`
 6. `docs/FILTER_ALGORITHM.md`
+7. `docs/DEPLOY_VERIFICATION_CHECKLIST.md`
+8. `docs/LAUNCH_GATES.md`
 
 ## Current checkpoint
 1. Last pushed commit on active execution branch: run `git log --oneline -n 1`
@@ -123,6 +125,13 @@ This file is the explicit handoff checkpoint.
    - monitor workflow added: `.github/workflows/monitor-production.yml`
    - monitor script: `scripts/monitor-production.mjs`
    - required GitHub secret for monitor: `COASENSUS_ADMIN_REFRESH_TOKEN`
+16. Reliability runbook checkpoint:
+   - `QA-004` complete: `docs/DEPLOY_VERIFICATION_CHECKLIST.md`
+   - `QA-005` complete: `docs/LAUNCH_GATES.md`
+   - execution board now shows all EPIC-05 items complete
+17. CI lockfile checkpoint:
+   - fixed `npm ci` failure by syncing `package-lock.json` with `@coasensus/llm-editor` workspace
+   - local `npm ci` and `npm run check` now pass again
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

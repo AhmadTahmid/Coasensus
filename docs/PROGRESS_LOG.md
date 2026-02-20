@@ -232,3 +232,18 @@
    - checks health, non-empty feed, and telemetry recency threshold (`COASENSUS_MAX_STALE_MINUTES`)
 107. Added monitor workflow secret requirement to runbook:
    - GitHub secret `COASENSUS_ADMIN_REFRESH_TOKEN` should match Worker admin token.
+108. Completed `QA-004` deploy verification documentation:
+   - added `docs/DEPLOY_VERIFICATION_CHECKLIST.md` with post-deploy smoke, freshness, and rollback triggers.
+109. Completed `QA-005` launch gate definition:
+   - added `docs/LAUNCH_GATES.md` with P0/P1 go-no-go criteria and operational alert thresholds.
+110. Linked reliability runbooks in root docs:
+   - updated `README.md` with deploy verification + launch gate references
+   - added `npm run monitor:prod` command reference.
+111. Updated execution board status:
+   - marked `QA-004` and `QA-005` done in `docs/ISSUE_CHECKLIST.md`.
+112. Fixed CI/deploy pipeline install failure on `main`:
+   - root cause: `package-lock.json` missing `@coasensus/llm-editor` workspace entry, causing `npm ci` to fail.
+   - fix: regenerated lockfile with `npm install --package-lock-only`.
+113. Local validation after lockfile fix:
+   - `npm ci` => success
+   - `npm run check` => success (typecheck, lint, tests across workspaces).

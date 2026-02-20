@@ -38,8 +38,8 @@
 - [x] `QA-001` Add ingestion smoke checks
 - [x] `QA-002` Add stale-feed detection
 - [x] `QA-003` Add API smoke tests
-- [ ] `QA-004` Add deploy verification checklist
-- [ ] `QA-005` Define launch gate criteria
+- [x] `QA-004` Add deploy verification checklist
+- [x] `QA-005` Define launch gate criteria
 
 ## EPIC-06 Hybrid Semantic Layer (Execution Plan V2)
 - [x] `SEM-001` Add phase-1 bouncer prefilter (query + local gates)
