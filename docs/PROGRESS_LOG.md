@@ -192,3 +192,11 @@
 93. Verified latest staging refresh and telemetry endpoint:
    - latest run reports `llmAttempts` and correct success-rate math
    - feed remains healthy with `scoreFormula=front_page_score_v1`.
+94. Added richer LLM HTTP error surfacing in Worker:
+   - OpenAI/Gemini non-2xx responses now include response-body detail in thrown errors
+   - refresh summary now includes `semantic.llmErrorSamples` (up to 5 samples).
+95. Re-ran staging Gemini test after user enabled billing with forced fresh prompt version:
+   - staging prompt set to `v1-gemini-003-billing`
+   - refresh metrics: `llmAttempts=8`, `llmEvaluated=8`, `llmFailures=0`, `llmSuccessRate=1.0`
+96. Confirmed semantic telemetry endpoint reflects improved post-billing success:
+   - `GET /api/admin/semantic-metrics` latest run and aggregate show Gemini success rate `1.0`.

@@ -172,6 +172,7 @@ interface SemanticEnrichmentResult {
     llmEvaluated: number;
     heuristicEvaluated: number;
     llmFailures: number;
+    llmErrorSamples: string[];
   };
 }
 
@@ -202,6 +203,7 @@ export interface RefreshSummary {
     llmEvaluated: number;
     heuristicEvaluated: number;
     llmFailures: number;
+    llmErrorSamples: string[];
   };
   metrics: {
     totalMs: number;
@@ -461,6 +463,26 @@ function resolveLlmModel(env: RefreshEnv, provider: LlmProvider): string {
     return configured;
   }
   return provider === "gemini" ? DEFAULT_GEMINI_MODEL : DEFAULT_LLM_MODEL;
+}
+
+function normalizeErrorDetail(detail: string): string {
+  const compact = detail.replace(/\s+/g, " ").trim();
+  if (compact.length <= 500) {
+    return compact;
+  }
+  return `${compact.slice(0, 500)}...`;
+}
+
+async function readHttpErrorDetail(response: Response): Promise<string> {
+  try {
+    const text = await response.text();
+    if (!text) {
+      return "";
+    }
+    return normalizeErrorDetail(text);
+  } catch {
+    return "";
+  }
 }
 
 function buildPageUrl(baseUrl: string, options: FetchOptions, offset: number): string {
@@ -883,7 +905,8 @@ async function classifyMarketWithOpenAI(
   });
 
   if (!response.ok) {
-    throw new Error(`LLM HTTP ${response.status}`);
+    const detail = await readHttpErrorDetail(response);
+    throw new Error(`OpenAI HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
   }
 
   const payload = (await response.json()) as {
@@ -991,7 +1014,8 @@ async function classifyMarketWithGemini(
   });
 
   if (!response.ok) {
-    throw new Error(`Gemini HTTP ${response.status}`);
+    const detail = await readHttpErrorDetail(response);
+    throw new Error(`Gemini HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
   }
 
   const payload = (await response.json()) as {
@@ -1194,6 +1218,7 @@ async function enrichMarketsWithSemanticCache(env: RefreshEnv, markets: Market[]
   let llmAttempts = 0;
   let heuristicEvaluated = 0;
   let llmFailures = 0;
+  const llmErrorSamples: string[] = [];
 
   for (const candidate of toClassify) {
     let classification: SemanticClassification;
@@ -1205,7 +1230,15 @@ async function enrichMarketsWithSemanticCache(env: RefreshEnv, markets: Market[]
         llmEvaluated += 1;
       } catch (error) {
         llmFailures += 1;
-        console.error("LLM classify failed, using heuristic fallback", error);
+        const message = error instanceof Error ? error.message : String(error);
+        if (llmErrorSamples.length < 5) {
+          llmErrorSamples.push(message);
+        }
+        console.error("LLM classify failed, using heuristic fallback", {
+          provider: llmProvider,
+          model: llmModel,
+          message,
+        });
         classification = heuristicSemanticClassification(candidate.market, promptVersion);
         heuristicEvaluated += 1;
       }
@@ -1238,6 +1271,7 @@ async function enrichMarketsWithSemanticCache(env: RefreshEnv, markets: Market[]
       llmEvaluated,
       heuristicEvaluated,
       llmFailures,
+      llmErrorSamples,
     },
   };
 }

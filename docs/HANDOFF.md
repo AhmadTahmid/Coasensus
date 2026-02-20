@@ -99,13 +99,14 @@ This file is the explicit handoff checkpoint.
    - Gemini target profile: `gemini-2.5-flash` + `generativelanguage.googleapis.com/v1beta`
 11. Staging Gemini status:
    - staging env currently set to Gemini (`COASENSUS_LLM_ENABLED=1`, provider `gemini`)
-   - prompt version: `v1-gemini-002`
+   - prompt version: `v1-gemini-003-billing`
    - cap: `COASENSUS_LLM_MAX_MARKETS_PER_RUN=8` (attempt-capped; fixed to prevent runaway failures)
-   - latest metrics snapshot: `llmAttempts=8`, `llmEvaluated=0`, `llmFailures=8`, `heuristicEvaluated=799`
+   - latest metrics snapshot: `llmAttempts=8`, `llmEvaluated=8`, `llmFailures=0`, `heuristicEvaluated=792`
 12. SEM-008 telemetry status:
    - migration added: `infra/db/migrations/0004_semantic_refresh_runs.sql`
    - refresh pipeline persists telemetry rows in `semantic_refresh_runs`
    - admin endpoint live: `GET /api/admin/semantic-metrics?limit=30` (token-protected)
+   - semantic summary includes `llmErrorSamples` for quick root-cause visibility when provider calls fail
 13. Pending next milestone:
    - tune semantic thresholds and ranking weights using observed outcomes
    - increase LLM cap gradually if/when provider quota allows
