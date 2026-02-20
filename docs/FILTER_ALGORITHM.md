@@ -41,6 +41,7 @@ Bouncer pre-filter defaults (before semantic scoring):
 
 Semantic layer defaults:
 - `COASENSUS_LLM_ENABLED=0` (off by default)
+- `COASENSUS_LLM_PROVIDER=openai` (`openai` or `gemini`)
 - `COASENSUS_LLM_MODEL=gpt-4o-mini`
 - `COASENSUS_LLM_PROMPT_VERSION=v1`
 - `COASENSUS_LLM_MIN_NEWS_SCORE=55`

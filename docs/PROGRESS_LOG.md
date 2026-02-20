@@ -138,3 +138,12 @@
 75. Verified staging API now reports formula mode:
    - `meta.scoreFormula = front_page_score_v1`
    - `frontPageScore` currently `0` on existing rows until next refresh run updates snapshot scores.
+76. Triggered authenticated staging refresh and verified non-zero persisted ranking values:
+   - refresh run id: `2026-02-20T13-23-20-355Z`
+   - `frontPageScore` now populated in top feed rows.
+77. Added provider abstraction for semantic LLM classification (`openai` + `gemini`) in Worker refresh pipeline.
+78. Added configurable provider env (`COASENSUS_LLM_PROVIDER`) and Gemini defaults/docs:
+   - provider: `gemini`
+   - model: `gemini-2.5-flash`
+   - base URL: `https://generativelanguage.googleapis.com/v1beta`
+79. Ran full workspace validation successfully after provider changes (`npm run check`).

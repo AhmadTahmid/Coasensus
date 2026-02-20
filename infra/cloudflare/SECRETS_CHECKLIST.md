@@ -26,11 +26,16 @@ Use this list before enabling automated deploys.
      - `curl -X POST -H "X-Admin-Token: <token>" https://coasensus.com/api/admin/refresh-feed`
 5. Optional LLM semantic filter secret:
    - staging:
-     - `echo "<openai-api-key>" | npx wrangler secret put COASENSUS_LLM_API_KEY --config infra/cloudflare/wrangler.api.jsonc --env staging`
+     - `echo "<llm-api-key>" | npx wrangler secret put COASENSUS_LLM_API_KEY --config infra/cloudflare/wrangler.api.jsonc --env staging`
    - production:
-     - `echo "<openai-api-key>" | npx wrangler secret put COASENSUS_LLM_API_KEY --config infra/cloudflare/wrangler.api.jsonc --env production`
+     - `echo "<llm-api-key>" | npx wrangler secret put COASENSUS_LLM_API_KEY --config infra/cloudflare/wrangler.api.jsonc --env production`
    - enable in vars:
      - set `COASENSUS_LLM_ENABLED` to `1`
+     - set `COASENSUS_LLM_PROVIDER` to `openai` or `gemini`
+   - Gemini example vars:
+     - `COASENSUS_LLM_PROVIDER=gemini`
+     - `COASENSUS_LLM_MODEL=gemini-2.5-flash`
+     - `COASENSUS_LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta`
 
 ## Safety checks
 1. Never commit `.dev.vars` or secret plaintext files.

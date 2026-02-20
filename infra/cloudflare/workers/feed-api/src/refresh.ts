@@ -84,6 +84,7 @@ interface RefreshEnv {
   COASENSUS_BOUNCER_MIN_HOURS_TO_END?: string;
   COASENSUS_BOUNCER_MAX_MARKET_AGE_DAYS?: string;
   COASENSUS_LLM_ENABLED?: string;
+  COASENSUS_LLM_PROVIDER?: string;
   COASENSUS_LLM_MODEL?: string;
   COASENSUS_LLM_BASE_URL?: string;
   COASENSUS_LLM_API_KEY?: string;
@@ -142,6 +143,8 @@ interface SemanticClassification {
   promptVersion: string;
   source: "llm" | "heuristic" | "cache";
 }
+
+type LlmProvider = "openai" | "gemini";
 
 interface CachedSemanticRow {
   market_id: string;
@@ -217,6 +220,9 @@ const DEFAULT_FETCH_OPTIONS: FetchOptions = {
 
 const DEFAULT_LLM_MODEL = "gpt-4o-mini";
 const DEFAULT_LLM_BASE_URL = "https://api.openai.com/v1";
+const DEFAULT_LLM_PROVIDER = "openai";
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+const DEFAULT_GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 const DEFAULT_LLM_PROMPT_VERSION = "v1";
 const DEFAULT_LLM_MIN_NEWS_SCORE = 55;
 const DEFAULT_LLM_MAX_MARKETS_PER_RUN = 150;
@@ -436,6 +442,11 @@ function sleep(ms: number): Promise<void> {
 
 function normalizeBaseUrl(baseUrl: string): string {
   return baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+}
+
+function resolveLlmProvider(env: RefreshEnv): LlmProvider {
+  const value = env.COASENSUS_LLM_PROVIDER?.trim().toLowerCase() || DEFAULT_LLM_PROVIDER;
+  return value === "gemini" ? "gemini" : "openai";
 }
 
 function buildPageUrl(baseUrl: string, options: FetchOptions, offset: number): string {
@@ -812,9 +823,21 @@ async function classifyMarketWithOpenAI(
 
   const model = env.COASENSUS_LLM_MODEL?.trim() || DEFAULT_LLM_MODEL;
   const baseUrl = normalizeBaseUrl(env.COASENSUS_LLM_BASE_URL?.trim() || DEFAULT_LLM_BASE_URL);
-
   const systemPrompt =
     "You are the Editor-in-Chief for a predictive news feed. Return JSON only. Classify if market is meme/noise, assign newsworthiness score (1-100), category, geo tag, and confidence.";
+  const userPayload = {
+    prompt_version: promptVersion,
+    market: {
+      id: market.id,
+      question: market.question,
+      description: market.description,
+      tags: market.tags,
+      liquidity: market.liquidity,
+      volume: market.volume,
+      open_interest: market.openInterest,
+      end_date: market.endDate,
+    },
+  };
 
   const body = {
     model,
@@ -823,19 +846,7 @@ async function classifyMarketWithOpenAI(
       { role: "system", content: systemPrompt },
       {
         role: "user",
-        content: JSON.stringify({
-          prompt_version: promptVersion,
-          market: {
-            id: market.id,
-            question: market.question,
-            description: market.description,
-            tags: market.tags,
-            liquidity: market.liquidity,
-            volume: market.volume,
-            open_interest: market.openInterest,
-            end_date: market.endDate,
-          },
-        }),
+        content: JSON.stringify(userPayload),
       },
     ],
     response_format: {
@@ -862,16 +873,25 @@ async function classifyMarketWithOpenAI(
   }
 
   const payload = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
+    choices?: Array<{ message?: { content?: string | Array<{ type?: string; text?: string }> } }>;
   };
-  const content = payload.choices?.[0]?.message?.content;
-  if (!content || typeof content !== "string") {
+  const messageContent = payload.choices?.[0]?.message?.content;
+  const content =
+    typeof messageContent === "string"
+      ? messageContent
+      : Array.isArray(messageContent)
+        ? messageContent
+            .map((part) => (typeof part?.text === "string" ? part.text : ""))
+            .join("\n")
+            .trim()
+        : "";
+  if (!content) {
     throw new Error("LLM response missing message content");
   }
 
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(content) as Record<string, unknown>;
+    parsed = parseSemanticJsonText(content);
   } catch {
     throw new Error("LLM response was not valid JSON");
   }
@@ -879,12 +899,109 @@ async function classifyMarketWithOpenAI(
   return normalizeSemanticPayload(parsed, model, promptVersion, "llm");
 }
 
+function parseSemanticJsonText(content: string): Record<string, unknown> {
+  const trimmed = content.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fenced?.[1]?.trim() || trimmed;
+  try {
+    const parsed = JSON.parse(candidate) as unknown;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    const first = candidate.indexOf("{");
+    const last = candidate.lastIndexOf("}");
+    if (first >= 0 && last > first) {
+      const sliced = candidate.slice(first, last + 1);
+      try {
+        const reparsed = JSON.parse(sliced) as unknown;
+        if (reparsed && typeof reparsed === "object" && !Array.isArray(reparsed)) {
+          return reparsed as Record<string, unknown>;
+        }
+      } catch {
+        // fall through and raise a single parse error below
+      }
+    }
+  }
+  throw new Error("Invalid JSON content");
+}
+
+async function classifyMarketWithGemini(
+  env: RefreshEnv,
+  market: Market,
+  promptVersion: string
+): Promise<SemanticClassification> {
+  const apiKey = env.COASENSUS_LLM_API_KEY?.trim();
+  if (!apiKey) {
+    throw new Error("LLM enabled but COASENSUS_LLM_API_KEY missing");
+  }
+  const model = env.COASENSUS_LLM_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
+  const baseUrl = normalizeBaseUrl(env.COASENSUS_LLM_BASE_URL?.trim() || DEFAULT_GEMINI_BASE_URL);
+  const promptText = [
+    "You are the Editor-in-Chief for a predictive news feed.",
+    "Return JSON only with this exact shape:",
+    '{ "is_meme": boolean, "newsworthiness_score": number(1..100), "category": "politics|economy|policy|geopolitics|public_health|climate_energy|tech_ai|sports|entertainment|other", "geo_tag": "US|EU|Asia|Africa|MiddleEast|World", "confidence": number(0..1) }',
+    "Do not add markdown fences or commentary.",
+    JSON.stringify({
+      prompt_version: promptVersion,
+      market: {
+        id: market.id,
+        question: market.question,
+        description: market.description,
+        tags: market.tags,
+        liquidity: market.liquidity,
+        volume: market.volume,
+        open_interest: market.openInterest,
+        end_date: market.endDate,
+      },
+    }),
+  ].join("\n");
+
+  const response = await fetch(`${baseUrl}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: promptText }],
+        },
+      ],
+      generationConfig: {
+        temperature: 0,
+        responseMimeType: "application/json",
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Gemini HTTP ${response.status}`);
+  }
+
+  const payload = (await response.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  };
+  const content = payload.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  if (!content) {
+    throw new Error("Gemini response missing content");
+  }
+  const parsed = parseSemanticJsonText(content);
+
+  return normalizeSemanticPayload(parsed, model, promptVersion, "llm");
+}
+
 async function classifyMarketSemantic(env: RefreshEnv, market: Market, promptVersion: string): Promise<SemanticClassification> {
   let lastError: unknown;
   const retries = 1;
+  const provider = resolveLlmProvider(env);
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
+      if (provider === "gemini") {
+        return await classifyMarketWithGemini(env, market, promptVersion);
+      }
       return await classifyMarketWithOpenAI(env, market, promptVersion);
     } catch (error) {
       lastError = error;

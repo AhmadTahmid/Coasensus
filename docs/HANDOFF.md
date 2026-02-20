@@ -90,7 +90,14 @@ This file is the explicit handoff checkpoint.
    - remote D1 migration `0003_front_page_score.sql` applied
    - staging Worker deployed (`335900ab-c578-46e2-af4d-fc14a69d3e12`)
    - note: existing rows show `frontPageScore=0` until next refresh snapshot writes computed scores
-9. Pending next milestone:
+9. Post-deploy verification:
+   - authenticated staging refresh executed
+   - `frontPageScore` values now populated (non-zero) in live staging feed
+10. LLM provider support status:
+   - semantic classifier supports `openai` and `gemini` providers
+   - configure via `COASENSUS_LLM_PROVIDER`
+   - Gemini target profile: `gemini-2.5-flash` + `generativelanguage.googleapis.com/v1beta`
+11. Pending next milestone:
    - enable LLM in staging with `COASENSUS_LLM_API_KEY`
    - tune semantic thresholds and ranking weights using observed outcomes
    - add semantic telemetry/reporting (`SEM-008`)

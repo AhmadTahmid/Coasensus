@@ -27,12 +27,17 @@ Reads from D1 tables:
    - `COASENSUS_BOUNCER_MAX_MARKET_AGE_DAYS`
 4. LLM semantic layer is optional and disabled by default:
    - `COASENSUS_LLM_ENABLED=0` (enable with `1`)
+   - `COASENSUS_LLM_PROVIDER` (`openai` or `gemini`, default `openai`)
    - `COASENSUS_LLM_MODEL` (default: `gpt-4o-mini`)
    - `COASENSUS_LLM_BASE_URL` (default: `https://api.openai.com/v1`)
    - `COASENSUS_LLM_PROMPT_VERSION`
    - `COASENSUS_LLM_MIN_NEWS_SCORE`
    - `COASENSUS_LLM_MAX_MARKETS_PER_RUN`
    - Worker secret required: `COASENSUS_LLM_API_KEY`
+   - For Gemini 2.5 Flash, set:
+     - `COASENSUS_LLM_PROVIDER=gemini`
+     - `COASENSUS_LLM_MODEL=gemini-2.5-flash`
+     - `COASENSUS_LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta`
 5. Front-page ranking formula weights (used for `sort=score`):
    - `COASENSUS_FRONTPAGE_W1` (LLM/news term)
    - `COASENSUS_FRONTPAGE_W2` (log-volume term)
