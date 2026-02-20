@@ -107,10 +107,15 @@ This file is the explicit handoff checkpoint.
    - refresh pipeline persists telemetry rows in `semantic_refresh_runs`
    - admin endpoint live: `GET /api/admin/semantic-metrics?limit=30` (token-protected)
    - semantic summary includes `llmErrorSamples` for quick root-cause visibility when provider calls fail
-13. Pending next milestone:
+13. Production rollout status:
+   - production DB migrations applied through `0004`
+   - production Worker deployed with Gemini profile (`v1-gemini-003-billing`, cap `8`)
+   - production admin refresh + semantic metrics endpoint validated (`200`)
+   - current blocker: production missing `COASENSUS_LLM_API_KEY`, so runtime shows `llmEnabled=false` and uses heuristic fallback
+14. Pending next milestone:
    - tune semantic thresholds and ranking weights using observed outcomes
    - increase LLM cap gradually if/when provider quota allows
-   - decide whether to keep Gemini-only staging profile or fall back to heuristic-first when quota is tight
+   - set production `COASENSUS_LLM_API_KEY` and re-run production refresh to confirm Gemini success rate
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

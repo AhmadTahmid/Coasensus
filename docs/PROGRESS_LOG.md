@@ -200,3 +200,15 @@
    - refresh metrics: `llmAttempts=8`, `llmEvaluated=8`, `llmFailures=0`, `llmSuccessRate=1.0`
 96. Confirmed semantic telemetry endpoint reflects improved post-billing success:
    - `GET /api/admin/semantic-metrics` latest run and aggregate show Gemini success rate `1.0`.
+97. Rolled production to Gemini profile and telemetry stack:
+   - applied D1 migrations `0002`, `0003`, `0004` to production
+   - deployed production Worker with Gemini env (`v1-gemini-003-billing`, cap `8`)
+   - deployment version: `b3ca4ccf-17ff-454c-abc3-9f33ff6d95fc`
+98. Added production admin refresh access by setting `COASENSUS_ADMIN_REFRESH_TOKEN` secret to current token for verification workflow.
+99. Verified production endpoints after deploy:
+   - `POST /api/admin/refresh-feed` => `200`
+   - `GET /api/admin/semantic-metrics` => `200`
+   - `GET /api/feed?sort=score` healthy (`front_page_score_v1`, non-zero scores)
+100. Production Gemini activation blocker identified:
+   - `wrangler secret list --env production` shows only `COASENSUS_ADMIN_REFRESH_TOKEN`
+   - missing `COASENSUS_LLM_API_KEY` in production means `llmEnabled=false` at runtime and classification falls back to heuristic.
