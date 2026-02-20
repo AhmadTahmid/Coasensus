@@ -76,3 +76,148 @@
 54. Added algorithm documentation for non-technical and technical readers:
    - `docs/FILTER_ALGORITHM.md`
    - linked from root `README.md`
+55. Started execution of `docs/EXECUTION_PLAN_V2.md` on branch `feat/execution-plan-v2`.
+56. Implemented Phase-1 pre-filter "Bouncer" controls in Cloudflare refresh pipeline:
+   - server-side Polymarket query filters (`volume_num_min`, `liquidity_num_min`, `start_date_min`, `end_date_min`)
+   - local fallback bouncer checks on volume, liquidity, min hours to end, and max market age
+   - new env controls in Wrangler config:
+     - `COASENSUS_BOUNCER_MIN_VOLUME`
+     - `COASENSUS_BOUNCER_MIN_LIQUIDITY`
+     - `COASENSUS_BOUNCER_MIN_HOURS_TO_END`
+     - `COASENSUS_BOUNCER_MAX_MARKET_AGE_DAYS`
+57. Added `bouncerDroppedCount` to refresh summary for observability.
+58. Deployed staging with bouncer-enabled refresh and verified successful ingest response.
+59. Implemented Phase-2 semantic enrichment pipeline in Cloudflare refresh flow:
+   - D1-backed semantic cache reads/writes (`semantic_market_cache`)
+   - cache fingerprinting by prompt version + market content
+   - heuristic classification fallback for uncached markets
+   - optional LLM classification path (env-gated, OpenAI-compatible API)
+60. Added D1 migration `0002_semantic_cache.sql` and updated migration docs.
+61. Extended category surface across stack with:
+   - `tech_ai`
+   - `sports`
+   - `entertainment`
+62. Added workspace package `services/llm-editor` (schema, prompt/editor helpers, cache-aware enrichment helpers, unit tests).
+63. Added/updated Worker config + docs for semantic controls:
+   - `COASENSUS_LLM_ENABLED`
+   - `COASENSUS_LLM_MODEL`
+   - `COASENSUS_LLM_BASE_URL`
+   - `COASENSUS_LLM_PROMPT_VERSION`
+   - `COASENSUS_LLM_MIN_NEWS_SCORE`
+   - `COASENSUS_LLM_MAX_MARKETS_PER_RUN`
+   - secret: `COASENSUS_LLM_API_KEY`
+64. Verified local Worker smoke refresh after migration:
+   - refresh summary includes `semantic` metrics (`cacheHits`, `cacheMisses`, `llmEvaluated`, `heuristicEvaluated`)
+   - feed includes semantic decision reasons (example: `included_semantic_threshold_met`)
+65. Ran full monorepo validation successfully: `npm run check` (typecheck + lint + tests).
+66. Committed and pushed Phase-2 implementation to `feat/execution-plan-v2`:
+   - commit: `bcda054`
+   - message: `feat: add semantic cache enrichment and llm editor scaffold`
+67. Implemented `SEM-007` front-page ranking formula in Worker refresh/API path:
+   - `Front Page Score = (w1 * S_LLM) + (w2 * log(V+1)) + (w3 * log(L+1)) - (lambda * delta_t)`
+   - `S_LLM = newsworthinessScore / 100`
+   - `delta_t = hours since updatedAt (fallback: createdAt)`
+68. Added configurable ranking vars in Cloudflare config:
+   - `COASENSUS_FRONTPAGE_W1`
+   - `COASENSUS_FRONTPAGE_W2`
+   - `COASENSUS_FRONTPAGE_W3`
+   - `COASENSUS_FRONTPAGE_LAMBDA`
+69. Added D1 migration `0003_front_page_score.sql`:
+   - adds `curated_feed.front_page_score`
+   - adds index `idx_curated_feed_front_page_score`
+70. Updated feed API `sort=score` ordering to use `front_page_score` when available, with automatic fallback to legacy ordering if migration is not yet applied.
+71. Added API response metadata/field for observability:
+   - `meta.scoreFormula` (`front_page_score_v1` or legacy)
+   - item field `frontPageScore`
+72. Updated algorithm and infra docs to reflect formula-driven ranking and new env controls.
+73. Verified locally after applying migration `0003`:
+   - manual refresh returned `200`
+   - `/api/feed?sort=score` returned `scoreFormula: front_page_score_v1`
+   - ranked items included populated `frontPageScore` values.
+74. Applied migration `0003_front_page_score.sql` to remote staging D1 and deployed updated staging Worker (version `335900ab-c578-46e2-af4d-fc14a69d3e12`).
+75. Verified staging API now reports formula mode:
+   - `meta.scoreFormula = front_page_score_v1`
+   - `frontPageScore` currently `0` on existing rows until next refresh run updates snapshot scores.
+76. Triggered authenticated staging refresh and verified non-zero persisted ranking values:
+   - refresh run id: `2026-02-20T13-23-20-355Z`
+   - `frontPageScore` now populated in top feed rows.
+77. Added provider abstraction for semantic LLM classification (`openai` + `gemini`) in Worker refresh pipeline.
+78. Added configurable provider env (`COASENSUS_LLM_PROVIDER`) and Gemini defaults/docs:
+   - provider: `gemini`
+   - model: `gemini-2.5-flash`
+   - base URL: `https://generativelanguage.googleapis.com/v1beta`
+79. Ran full workspace validation successfully after provider changes (`npm run check`).
+80. Enabled Gemini provider in staging environment config:
+   - `COASENSUS_LLM_ENABLED=1`
+   - `COASENSUS_LLM_PROVIDER=gemini`
+   - `COASENSUS_LLM_MODEL=gemini-2.5-flash`
+   - `COASENSUS_LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta`
+81. Deployed staging Worker with Gemini settings (version `2b26deea-a05e-42ac-8012-70c14a6ad973`) and executed authenticated refresh.
+82. Initial Gemini run metrics (prompt `v1-gemini-001`) showed provider quota/rate-limit behavior:
+   - `llmEvaluated=8`
+   - `llmFailures=792`
+   - `heuristicEvaluated=792`
+83. Tuned staging cap for stable operation:
+   - `COASENSUS_LLM_MAX_MARKETS_PER_RUN=8`
+   - prompt version bumped to `v1-gemini-002`
+84. Redeployed staging Worker (version `c15a274d-bf96-4e24-ae36-96983ebca18c`) and verified clean refresh:
+   - `llmEvaluated=8`
+   - `llmFailures=0`
+   - `heuristicEvaluated=792`
+   - total runtime reduced to ~22s
+85. Completed SEM-006 comparison snapshot (staging):
+   - Baseline (heuristic-only): `269 curated / 531 rejected`
+   - Gemini-mixed run (8 LLM + 792 heuristic): `269 curated / 531 rejected`
+   - Cache model distribution for prompt `v1-gemini-002`: `8 gemini-2.5-flash`, `792 heuristic-v1`
+86. Verified live staging feed remains healthy after Gemini enablement:
+   - `scoreFormula=front_page_score_v1`
+   - feed returns non-zero `frontPageScore` values.
+87. Added semantic telemetry persistence migration `0004_semantic_refresh_runs.sql` and wired refresh-run metric writes in Worker.
+88. Added admin-protected telemetry endpoint:
+   - `GET /api/admin/semantic-metrics?limit=30`
+   - returns recent run metrics + aggregated prompt/provider/model stats.
+89. Applied migration `0004_semantic_refresh_runs.sql` to remote staging D1 and deployed telemetry-enabled Worker (`5dbed2f8-2e3f-4811-9e6c-e7788de1e393`).
+90. Detected and fixed LLM cap bug:
+   - previous logic capped successful LLM calls, not attempts, causing excessive retries on provider failures
+   - added `llmAttempts` metric and now cap is enforced on attempts (`COASENSUS_LLM_MAX_MARKETS_PER_RUN`).
+91. Re-ran staging cap tests after fix (forced cache misses via prompt-version bumps):
+   - `v1-gemini-ramp-8fix`: attempts `8`, success `1`, failures `7`, runtime ~`11.8s`
+   - `v1-gemini-ramp-16fix`: attempts `16`, success `0`, failures `16`, runtime ~`12.4s`
+   - `v1-gemini-ramp-32fix`: attempts `32`, success `0`, failures `32`, runtime ~`16.3s`
+92. Restored staging to stable Gemini profile and redeployed (`353018fd-7e32-4814-8dc3-d2f3036682d5`):
+   - provider `gemini`
+   - model `gemini-2.5-flash`
+   - prompt `v1-gemini-002`
+   - cap `COASENSUS_LLM_MAX_MARKETS_PER_RUN=8`
+93. Verified latest staging refresh and telemetry endpoint:
+   - latest run reports `llmAttempts` and correct success-rate math
+   - feed remains healthy with `scoreFormula=front_page_score_v1`.
+94. Added richer LLM HTTP error surfacing in Worker:
+   - OpenAI/Gemini non-2xx responses now include response-body detail in thrown errors
+   - refresh summary now includes `semantic.llmErrorSamples` (up to 5 samples).
+95. Re-ran staging Gemini test after user enabled billing with forced fresh prompt version:
+   - staging prompt set to `v1-gemini-003-billing`
+   - refresh metrics: `llmAttempts=8`, `llmEvaluated=8`, `llmFailures=0`, `llmSuccessRate=1.0`
+96. Confirmed semantic telemetry endpoint reflects improved post-billing success:
+   - `GET /api/admin/semantic-metrics` latest run and aggregate show Gemini success rate `1.0`.
+97. Rolled production to Gemini profile and telemetry stack:
+   - applied D1 migrations `0002`, `0003`, `0004` to production
+   - deployed production Worker with Gemini env (`v1-gemini-003-billing`, cap `8`)
+   - deployment version: `b3ca4ccf-17ff-454c-abc3-9f33ff6d95fc`
+98. Added production admin refresh access by setting `COASENSUS_ADMIN_REFRESH_TOKEN` secret to current token for verification workflow.
+99. Verified production endpoints after deploy:
+   - `POST /api/admin/refresh-feed` => `200`
+   - `GET /api/admin/semantic-metrics` => `200`
+   - `GET /api/feed?sort=score` healthy (`front_page_score_v1`, non-zero scores)
+100. Production Gemini activation blocker identified:
+   - `wrangler secret list --env production` shows only `COASENSUS_ADMIN_REFRESH_TOKEN`
+   - missing `COASENSUS_LLM_API_KEY` in production means `llmEnabled=false` at runtime and classification falls back to heuristic.
+101. User added production `COASENSUS_LLM_API_KEY`; reran production validation with forced fresh prompt version:
+   - production prompt set to `v1-gemini-004-prodcheck`
+   - refresh metrics: `llmAttempts=8`, `llmEvaluated=8`, `llmFailures=0`, `heuristicEvaluated=792`
+   - telemetry confirms Gemini success rate `1.0`
+102. Production semantic + feed health confirmed:
+   - `GET /api/admin/semantic-metrics` => `200` with Gemini success data
+   - `GET /api/feed?sort=score` => healthy (`front_page_score_v1`, non-zero scores)
+103. Added production error observability path for future provider issues:
+   - `llmErrorSamples` now exposed in refresh summary (empty on successful run).

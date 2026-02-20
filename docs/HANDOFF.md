@@ -13,10 +13,11 @@ This file is the explicit handoff checkpoint.
 6. `docs/FILTER_ALGORITHM.md`
 
 ## Current checkpoint
-1. Last pushed commit: run `git log --oneline -n 1`
+1. Last pushed commit on active execution branch: run `git log --oneline -n 1`
 2. Repo: `https://github.com/AhmadTahmid/Coasensus`
-3. Working branch: `main`
-4. Core stack status:
+3. Baseline branch: `main`
+4. Active execution branch for new plan: `feat/execution-plan-v2`
+5. Core stack status:
    - Ingestion client: implemented
    - Local persistence: implemented (`infra/db/local`)
    - Feed API: implemented (`/health`, `/feed`)
@@ -29,6 +30,8 @@ This file is the explicit handoff checkpoint.
    - Manual refresh endpoint: implemented (`POST /api/admin/refresh-feed`)
    - Scheduled refresh: implemented (staging every 30m, production every 15m)
    - Admin refresh auth: protected by `COASENSUS_ADMIN_REFRESH_TOKEN` secret
+   - Phase-1 bouncer prefilter: implemented (query-level + local fallback gates)
+   - Phase-2 semantic layer: implemented (D1 semantic cache + heuristic classifier + optional LLM path)
 
 ## Known environment caveats
 1. Some sandbox contexts block process spawn for Vitest/Vite and `tsx`.
@@ -66,6 +69,53 @@ This file is the explicit handoff checkpoint.
    - Added stronger sports/entertainment exclusions and stricter news threshold.
 12. Admin refresh token was rotated after earlier exposure in chat logs.
     - endpoint now requires current token (`401` without/old token, `200` with current token).
+
+## Execution Plan V2 checkpoint (2026-02-20)
+1. Semantic cache migration added: `infra/db/migrations/0002_semantic_cache.sql`.
+2. Worker refresh summary now returns semantic metrics under `summary.semantic`.
+3. Curation now supports semantic-driven decisions (example include reason: `included_semantic_threshold_met`).
+4. Category set expanded across API/filter/UI/shared types:
+   - `tech_ai`
+   - `sports`
+   - `entertainment`
+5. Optional LLM controls added to Worker env config, default disabled (`COASENSUS_LLM_ENABLED="0"`).
+6. Local smoke verification completed:
+   - `POST /api/admin/refresh-feed` returned `200` in local wrangler dev
+   - feed returned non-empty items and semantic decision reasons
+7. Front-page ranking formula milestone completed (`SEM-007`):
+   - formula implemented and persisted in `curated_feed.front_page_score`
+   - feed API `sort=score` prefers `front_page_score` with fallback to legacy sort if migration missing
+   - API now returns `meta.scoreFormula` and per-item `frontPageScore`
+8. Staging rollout status:
+   - remote D1 migration `0003_front_page_score.sql` applied
+   - staging Worker deployed (`335900ab-c578-46e2-af4d-fc14a69d3e12`)
+   - note: existing rows show `frontPageScore=0` until next refresh snapshot writes computed scores
+9. Post-deploy verification:
+   - authenticated staging refresh executed
+   - `frontPageScore` values now populated (non-zero) in live staging feed
+10. LLM provider support status:
+   - semantic classifier supports `openai` and `gemini` providers
+   - configure via `COASENSUS_LLM_PROVIDER`
+   - Gemini target profile: `gemini-2.5-flash` + `generativelanguage.googleapis.com/v1beta`
+11. Staging Gemini status:
+   - staging env currently set to Gemini (`COASENSUS_LLM_ENABLED=1`, provider `gemini`)
+   - prompt version: `v1-gemini-003-billing`
+   - cap: `COASENSUS_LLM_MAX_MARKETS_PER_RUN=8` (attempt-capped; fixed to prevent runaway failures)
+   - latest metrics snapshot: `llmAttempts=8`, `llmEvaluated=8`, `llmFailures=0`, `heuristicEvaluated=792`
+12. SEM-008 telemetry status:
+   - migration added: `infra/db/migrations/0004_semantic_refresh_runs.sql`
+   - refresh pipeline persists telemetry rows in `semantic_refresh_runs`
+   - admin endpoint live: `GET /api/admin/semantic-metrics?limit=30` (token-protected)
+   - semantic summary includes `llmErrorSamples` for quick root-cause visibility when provider calls fail
+13. Production rollout status:
+   - production DB migrations applied through `0004`
+   - production Worker deployed with Gemini profile (`v1-gemini-004-prodcheck`, cap `8`)
+   - production admin refresh + semantic metrics endpoint validated (`200`)
+   - production `COASENSUS_LLM_API_KEY` now set and verified live (`llmEvaluated=8`, `llmFailures=0`)
+14. Pending next milestone:
+   - tune semantic thresholds and ranking weights using observed outcomes
+   - increase LLM cap gradually if/when provider quota allows
+   - optionally align staging/production prompt versions after evaluation window
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

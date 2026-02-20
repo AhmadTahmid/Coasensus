@@ -9,3 +9,4 @@ coverage/
 Thumbs.db
 *.tsbuildinfo
 infra/db/local/
+.wrangler/

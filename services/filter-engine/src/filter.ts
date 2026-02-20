@@ -41,6 +41,9 @@ const CATEGORY_MAP: Record<MarketCategory, string[]> = {
   geopolitics: ["war", "conflict", "ceasefire", "sanction", "nato", "china", "russia", "taiwan"],
   public_health: ["pandemic", "vaccine", "cdc", "outbreak", "public health", "hospital", "epidemic"],
   climate_energy: ["climate", "emissions", "oil", "gas", "renewable", "energy", "carbon"],
+  tech_ai: ["ai", "artificial intelligence", "openai", "anthropic", "google", "chip", "gpu", "robotics"],
+  sports: ["sports", "tournament", "league", "championship", "playoff", "final"],
+  entertainment: ["movie", "music", "celebrity", "award", "oscar", "grammy", "tv"],
   other: [],
 };
 
