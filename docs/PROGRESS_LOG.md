@@ -290,3 +290,11 @@
 129. Manual dispatch validation for new staging monitor:
    - run `22232501844` executed and failed at telemetry auth (`401 Unauthorized`) on `/api/admin/semantic-metrics`
    - indicates GitHub secret token does not currently match staging Worker `COASENSUS_ADMIN_REFRESH_TOKEN` value.
+130. Identified deploy-config drift affecting semantic behavior:
+   - `infra/cloudflare/wrangler.api.ci.jsonc` contained only minimal vars for staging/production.
+   - CI Worker deploys were therefore running with default runtime values in code (not intended Gemini semantic profile).
+131. Fixed CI deploy config drift:
+   - synced `infra/cloudflare/wrangler.api.ci.jsonc` env vars with semantic/bouncer/front-page settings from `wrangler.api.jsonc`
+   - includes LLM provider/model/prompt/min-news-score/max-per-run and front-page ranking weights.
+132. Local validation for config fix:
+   - `wrangler.api.ci.jsonc` parses as valid JSON.

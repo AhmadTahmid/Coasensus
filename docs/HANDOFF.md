@@ -156,6 +156,10 @@ This file is the explicit handoff checkpoint.
 24. Staging monitor caveat:
    - workflow is active, but latest manual run (`22232501844`) failed with `401` on `/api/admin/semantic-metrics`
    - GitHub secret `COASENSUS_ADMIN_REFRESH_TOKEN` must match staging Worker admin token for green staging monitor runs.
+25. CI deploy config checkpoint (semantic consistency):
+   - fixed `infra/cloudflare/wrangler.api.ci.jsonc` to include full runtime vars for staging/production
+   - prevents CI deploys from silently reverting to code defaults (e.g., `llmEnabled=false`, provider fallback)
+   - next `Deploy Cloudflare` run should re-apply intended Gemini semantic profile in production.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
