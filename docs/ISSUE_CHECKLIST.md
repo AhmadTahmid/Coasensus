@@ -51,6 +51,10 @@
 - [x] `SEM-007` Implement final front-page ranking formula in API ordering path
 - [x] `SEM-008` Add semantic quality telemetry dashboard/report
 
+## EPIC-07 Post-Launch Tuning
+- [x] `TUNE-001` Prioritize LLM candidate selection and add category-specific sports/entertainment semantic thresholds
+- [x] `TUNE-002` Validate tuning impact on staging after a full refresh cycle
+
 ## Suggested assignment
 - Agent 1: EPIC-00
 - Agent 2: EPIC-01

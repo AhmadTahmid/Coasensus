@@ -90,6 +90,8 @@ interface RefreshEnv {
   COASENSUS_LLM_API_KEY?: string;
   COASENSUS_LLM_PROMPT_VERSION?: string;
   COASENSUS_LLM_MIN_NEWS_SCORE?: string;
+  COASENSUS_LLM_MIN_NEWS_SCORE_SPORTS?: string;
+  COASENSUS_LLM_MIN_NEWS_SCORE_ENTERTAINMENT?: string;
   COASENSUS_LLM_MAX_MARKETS_PER_RUN?: string;
   COASENSUS_FRONTPAGE_W1?: string;
   COASENSUS_FRONTPAGE_W2?: string;
@@ -233,6 +235,8 @@ const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 const DEFAULT_GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 const DEFAULT_LLM_PROMPT_VERSION = "v1";
 const DEFAULT_LLM_MIN_NEWS_SCORE = 55;
+const DEFAULT_LLM_MIN_NEWS_SCORE_SPORTS = 72;
+const DEFAULT_LLM_MIN_NEWS_SCORE_ENTERTAINMENT = 78;
 const DEFAULT_LLM_MAX_MARKETS_PER_RUN = 150;
 const DEFAULT_FRONTPAGE_W1 = 0.6;
 const DEFAULT_FRONTPAGE_W2 = 0.25;
@@ -1219,8 +1223,31 @@ async function enrichMarketsWithSemanticCache(env: RefreshEnv, markets: Market[]
   let heuristicEvaluated = 0;
   let llmFailures = 0;
   const llmErrorSamples: string[] = [];
-
+  const llmQueue: Array<{ market: Market; fingerprint: string; priority: number }> = [];
   for (const candidate of toClassify) {
+    const corpus = toCorpus(candidate.market);
+    if (isStrictExcludedByToken(corpus)) {
+      const classification = heuristicSemanticClassification(candidate.market, promptVersion);
+      byMarketId.set(candidate.market.id, classification);
+      rowsToUpsert.push({
+        marketId: candidate.market.id,
+        promptVersion,
+        fingerprint: candidate.fingerprint,
+        classification,
+      });
+      heuristicEvaluated += 1;
+      continue;
+    }
+    llmQueue.push({
+      market: candidate.market,
+      fingerprint: candidate.fingerprint,
+      priority: computeLlmCandidatePriority(candidate.market),
+    });
+  }
+
+  llmQueue.sort((a, b) => b.priority - a.priority || a.market.id.localeCompare(b.market.id));
+
+  for (const candidate of llmQueue) {
     let classification: SemanticClassification;
 
     if (llmConfigured && llmAttempts < maxLlmMarkets) {
@@ -1389,6 +1416,63 @@ function llmMinNewsScore(env: RefreshEnv): number {
   return asFiniteNumber(env.COASENSUS_LLM_MIN_NEWS_SCORE, DEFAULT_LLM_MIN_NEWS_SCORE, 1, 100);
 }
 
+function llmCategoryNewsScoreFloor(env: RefreshEnv, category: MarketCategory): number {
+  const base = llmMinNewsScore(env);
+  if (category === "sports") {
+    const sportsFloor = asFiniteNumber(
+      env.COASENSUS_LLM_MIN_NEWS_SCORE_SPORTS,
+      DEFAULT_LLM_MIN_NEWS_SCORE_SPORTS,
+      1,
+      100
+    );
+    return Math.max(base, sportsFloor);
+  }
+  if (category === "entertainment") {
+    const entertainmentFloor = asFiniteNumber(
+      env.COASENSUS_LLM_MIN_NEWS_SCORE_ENTERTAINMENT,
+      DEFAULT_LLM_MIN_NEWS_SCORE_ENTERTAINMENT,
+      1,
+      100
+    );
+    return Math.max(base, entertainmentFloor);
+  }
+  return base;
+}
+
+function computeLlmCandidatePriority(market: Market): number {
+  const volume = Math.max(0, market.volume ?? 0);
+  const liquidity = Math.max(0, market.liquidity ?? 0);
+  const corpus = toCorpus(market);
+  const detectedCategory = detectCategory(corpus);
+  const categoryBonus = detectedCategory.category === "other" ? 0 : 1.5;
+  const keywordBonus = Math.min(1, detectedCategory.keywords.length * 0.25);
+
+  const nowMs = Date.now();
+  const updatedMs = parseTimestampMs(market.updatedAt) ?? parseTimestampMs(market.createdAt);
+  const recencyBonus =
+    updatedMs === null ? 0 : Math.max(0, 1 - Math.min(180, (nowMs - updatedMs) / (1000 * 60 * 60 * 24)) / 180);
+
+  const endMs = parseTimestampMs(market.endDate);
+  let deadlineBonus = 0;
+  if (endMs !== null) {
+    const daysToEnd = (endMs - nowMs) / (1000 * 60 * 60 * 24);
+    if (daysToEnd >= 0 && daysToEnd <= 14) {
+      deadlineBonus = 1;
+    } else if (daysToEnd < 0) {
+      deadlineBonus = -1;
+    }
+  }
+
+  const score =
+    0.45 * Math.log(volume + 1) +
+    0.35 * Math.log(liquidity + 1) +
+    categoryBonus +
+    keywordBonus +
+    0.5 * recencyBonus +
+    deadlineBonus;
+  return Number(score.toFixed(6));
+}
+
 function curateMarkets(
   markets: Market[],
   semanticByMarketId: Map<string, SemanticClassification>,
@@ -1398,7 +1482,6 @@ function curateMarkets(
   const curated: CuratedFeedItem[] = [];
   const rejected: CuratedFeedItem[] = [];
   const civicThreshold = 2;
-  const newsThreshold = llmMinNewsScore(env);
   const rankingConfig = resolveFrontPageRankingConfig(env);
   const rankingNowMs = Date.now();
 
@@ -1408,6 +1491,7 @@ function curateMarkets(
     const semantic = semanticByMarketId.get(market.id) ?? heuristicSemanticClassification(market, promptVersion);
     const score = createScoreBreakdown(market, semantic);
     const frontPageScore = computeFrontPageScore(market, score.newsworthinessScore, rankingConfig, rankingNowMs);
+    const categoryNewsThreshold = llmCategoryNewsScoreFloor(env, score.category);
 
     let isCurated = false;
     let decisionReason = "excluded_semantic_below_threshold";
@@ -1416,7 +1500,11 @@ function curateMarkets(
       decisionReason = exclusionReason;
     } else if (semantic.isMeme) {
       decisionReason = "excluded_llm_meme";
-    } else if (score.civicScore >= civicThreshold && score.newsworthinessScore >= newsThreshold) {
+    } else if (score.civicScore < civicThreshold) {
+      decisionReason = "excluded_semantic_below_civic_threshold";
+    } else if (score.newsworthinessScore < categoryNewsThreshold) {
+      decisionReason = `excluded_semantic_news_threshold_${score.category}`;
+    } else {
       isCurated = true;
       decisionReason = "included_semantic_threshold_met";
     }

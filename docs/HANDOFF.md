@@ -164,6 +164,28 @@ This file is the explicit handoff checkpoint.
    - merged fix to `main` (`530e567`) and deployed successfully
    - production refresh telemetry now confirms `llmEnabled=true`, `llmProvider=gemini`, `llmModel=gemini-2.5-flash`
    - staging telemetry remains aligned on Gemini profile.
+27. Semantic tuning pass #1 (in progress on `agent/semantic-tuning-pass1`):
+   - worker refresh pipeline now prioritizes cache-miss candidates for LLM usage by market signal + civic hints
+   - strict meme-token candidates no longer consume LLM attempt budget
+   - added category-specific semantic news floors:
+     - `COASENSUS_LLM_MIN_NEWS_SCORE_SPORTS=72`
+     - `COASENSUS_LLM_MIN_NEWS_SCORE_ENTERTAINMENT=78`
+   - added explicit rejection reasons:
+     - `excluded_semantic_below_civic_threshold`
+     - `excluded_semantic_news_threshold_<category>`
+   - staging deploy completed (`4ea11048-538b-4c2f-b710-ecc2238b8174`) and monitor checks are green.
+28. Pending verification for pass #1:
+   - wait for a post-deploy staging refresh run and compare category distribution/top-card composition before promoting to production.
+29. Pass #1 staging verification complete:
+   - latest staging run after deploy: `2026-02-20T18-30-16-036Z`
+   - telemetry healthy: `llmAttempts=1`, `llmEvaluated=1`, `llmFailures=0`
+   - curated feed tightened from `273` -> `218` items
+   - top 20 cards are now entirely politics/civic
+   - sports/entertainment suppression confirmed:
+     - `sports`: `207` total, `1` curated
+     - `entertainment`: `96` total, `0` curated
+30. Next recommended step:
+   - promote tuning patch to `main`, let CI deploy production, then verify production metrics + category composition with monitor and feed sampling script.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
