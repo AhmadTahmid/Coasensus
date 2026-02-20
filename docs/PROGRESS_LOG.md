@@ -87,3 +87,29 @@
      - `COASENSUS_BOUNCER_MAX_MARKET_AGE_DAYS`
 57. Added `bouncerDroppedCount` to refresh summary for observability.
 58. Deployed staging with bouncer-enabled refresh and verified successful ingest response.
+59. Implemented Phase-2 semantic enrichment pipeline in Cloudflare refresh flow:
+   - D1-backed semantic cache reads/writes (`semantic_market_cache`)
+   - cache fingerprinting by prompt version + market content
+   - heuristic classification fallback for uncached markets
+   - optional LLM classification path (env-gated, OpenAI-compatible API)
+60. Added D1 migration `0002_semantic_cache.sql` and updated migration docs.
+61. Extended category surface across stack with:
+   - `tech_ai`
+   - `sports`
+   - `entertainment`
+62. Added workspace package `services/llm-editor` (schema, prompt/editor helpers, cache-aware enrichment helpers, unit tests).
+63. Added/updated Worker config + docs for semantic controls:
+   - `COASENSUS_LLM_ENABLED`
+   - `COASENSUS_LLM_MODEL`
+   - `COASENSUS_LLM_BASE_URL`
+   - `COASENSUS_LLM_PROMPT_VERSION`
+   - `COASENSUS_LLM_MIN_NEWS_SCORE`
+   - `COASENSUS_LLM_MAX_MARKETS_PER_RUN`
+   - secret: `COASENSUS_LLM_API_KEY`
+64. Verified local Worker smoke refresh after migration:
+   - refresh summary includes `semantic` metrics (`cacheHits`, `cacheMisses`, `llmEvaluated`, `heuristicEvaluated`)
+   - feed includes semantic decision reasons (example: `included_semantic_threshold_met`)
+65. Ran full monorepo validation successfully: `npm run check` (typecheck + lint + tests).
+66. Committed and pushed Phase-2 implementation to `feat/execution-plan-v2`:
+   - commit: `bcda054`
+   - message: `feat: add semantic cache enrichment and llm editor scaffold`

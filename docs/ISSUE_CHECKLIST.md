@@ -41,6 +41,16 @@
 - [ ] `QA-004` Add deploy verification checklist
 - [ ] `QA-005` Define launch gate criteria
 
+## EPIC-06 Hybrid Semantic Layer (Execution Plan V2)
+- [x] `SEM-001` Add phase-1 bouncer prefilter (query + local gates)
+- [x] `SEM-002` Add D1 semantic cache table and migration
+- [x] `SEM-003` Integrate semantic enrichment in refresh pipeline (cache + heuristic + optional LLM path)
+- [x] `SEM-004` Extend categories across API/filter/UI/shared contracts (`tech_ai`, `sports`, `entertainment`)
+- [x] `SEM-005` Add `services/llm-editor` scaffold with schema/editor tests
+- [ ] `SEM-006` Enable LLM in staging and compare heuristic vs LLM output quality
+- [ ] `SEM-007` Implement final front-page ranking formula in API ordering path
+- [ ] `SEM-008` Add semantic quality telemetry dashboard/report
+
 ## Suggested assignment
 - Agent 1: EPIC-00
 - Agent 2: EPIC-01
