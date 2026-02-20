@@ -252,3 +252,7 @@
 115. Validated updated CI test commands on Linux Node 22 container:
    - ran `npm ci` and each workspace test command from CI script
    - all commands passed in `node:22-bullseye`.
+116. Stabilized CI for `ingest-worker` suite:
+   - updated CI step to run `services/ingest-worker` tests with `--pool=forks --maxWorkers=1 --minWorkers=1`.
+117. Verified ingest-worker stability command on Linux Node 22 container:
+   - command passed with all 13 ingest-worker tests green.

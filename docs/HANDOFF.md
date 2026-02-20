@@ -135,6 +135,9 @@ This file is the explicit handoff checkpoint.
 18. CI diagnostics checkpoint:
    - CI workflow now runs tests per workspace for clearer failing-package visibility
    - Linux Node 22 container validation passed for new CI test commands
+19. CI ingest-worker stabilization:
+   - `ingest-worker` CI test step now uses single-worker forks mode to reduce flaky runner behavior
+   - Linux container validation passed with updated ingest-worker command
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
