@@ -200,6 +200,23 @@ This file is the explicit handoff checkpoint.
      - raise/decrease sports/entertainment floors
      - adjust baseline `COASENSUS_LLM_MIN_NEWS_SCORE`
      - increase `COASENSUS_LLM_MAX_MARKETS_PER_RUN` if cache misses grow.
+34. Topic/event de-dup milestone (pass #1, staging):
+   - added post-ranking de-dup pass in refresh pipeline to prevent same-story variant domination
+   - dedup demotions are transparent via `excluded_topic_duplicate_of_<anchor_market_id>`
+   - configurable via:
+     - `COASENSUS_TOPIC_DEDUP_ENABLED`
+     - `COASENSUS_TOPIC_DEDUP_SIMILARITY`
+     - `COASENSUS_TOPIC_DEDUP_MIN_SHARED_TOKENS`
+     - `COASENSUS_TOPIC_DEDUP_MAX_PER_CLUSTER`
+35. Staging verification for de-dup pass:
+   - deployed version `a5edbc64-8169-4e94-a10e-b667da8f3865`
+   - refresh snapshot `2026-02-20T20:00:13.558Z` healthy (`llmAttempts=1`, `llmFailures=0`)
+   - curated feed reduced to `84` items with `133` explicit dedup rejections
+   - top-20 now includes geopolitics presence (`politics: 17`, `geopolitics: 3`).
+36. Queue hygiene:
+   - added `docs/ROADMAP_QUEUE.md` to track `Now / Next / Later` milestones and avoid losing deferred work while moving fast.
+37. Recommended next action:
+   - if staging looks good for 1-2 additional refresh cycles, promote this branch to `main` and verify production composition.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

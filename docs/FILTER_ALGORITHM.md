@@ -61,6 +61,12 @@ Front-page ranking defaults:
 - `COASENSUS_FRONTPAGE_W3=0.1`
 - `COASENSUS_FRONTPAGE_LAMBDA=0.02`
 
+Topic de-dup defaults:
+- `COASENSUS_TOPIC_DEDUP_ENABLED=1`
+- `COASENSUS_TOPIC_DEDUP_SIMILARITY=0.55`
+- `COASENSUS_TOPIC_DEDUP_MIN_SHARED_TOKENS=5`
+- `COASENSUS_TOPIC_DEDUP_MAX_PER_CLUSTER=1`
+
 ## 4. Canonical market fields
 
 Each raw Polymarket record is normalized to:
@@ -183,11 +189,25 @@ Other supported sorts:
 - `sort=liquidity`
 - `sort=endDate`
 
+## 11. Topic de-dup and diversity
+
+After ranking, curated markets are scanned in score order to reduce near-duplicate topic variants.
+
+How it works:
+- Build normalized token sets from each market question.
+- Compare to already-kept markets in the same category using token-overlap similarity.
+- If similarity passes threshold and shared tokens minimum:
+  - keep only up to `COASENSUS_TOPIC_DEDUP_MAX_PER_CLUSTER` for that topic cluster
+  - demote extras to rejected with:
+    - `excluded_topic_duplicate_of_<anchor_market_id>`
+
+This prevents the front page from being dominated by many variants of the same underlying event.
+
 Default API behavior:
 - Returns only curated markets (`is_curated = 1`)
 - Paginated response (`page`, `pageSize`)
 
-## 11. Why some markets appear first
+## 12. Why some markets appear first
 
 Markets appear at the top when they combine:
 - High semantic newsworthiness (`S_LLM`)
@@ -196,14 +216,14 @@ Markets appear at the top when they combine:
 
 In practice, high-liquidity political/policy markets often rank first.
 
-## 12. Current limitations (v1 heuristic)
+## 13. Current limitations (v1 heuristic)
 
 This is still mostly heuristic + prompt-based filtering, so:
 - It can still miss nuanced civic relevance.
 - It is not yet event-deduplicated (same event may appear in multiple variants).
 - It does not yet use external source credibility scoring.
 
-## 13. Source of truth in code
+## 14. Source of truth in code
 
 - Worker runtime curation used in production refresh:
   - `infra/cloudflare/workers/feed-api/src/refresh.ts`
@@ -213,7 +233,7 @@ This is still mostly heuristic + prompt-based filtering, so:
 - Feed API sorting/filter behavior:
   - `infra/cloudflare/workers/feed-api/src/index.ts`
 
-## 14. Telemetry
+## 15. Telemetry
 
 Admin-only endpoint:
 - `GET /api/admin/semantic-metrics?limit=30`

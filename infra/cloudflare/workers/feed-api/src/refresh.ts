@@ -97,6 +97,10 @@ interface RefreshEnv {
   COASENSUS_FRONTPAGE_W2?: string;
   COASENSUS_FRONTPAGE_W3?: string;
   COASENSUS_FRONTPAGE_LAMBDA?: string;
+  COASENSUS_TOPIC_DEDUP_ENABLED?: string;
+  COASENSUS_TOPIC_DEDUP_SIMILARITY?: string;
+  COASENSUS_TOPIC_DEDUP_MIN_SHARED_TOKENS?: string;
+  COASENSUS_TOPIC_DEDUP_MAX_PER_CLUSTER?: string;
 }
 
 interface FetchOptions {
@@ -133,6 +137,13 @@ interface FrontPageRankingConfig {
   w2: number;
   w3: number;
   lambda: number;
+}
+
+interface TopicDedupConfig {
+  enabled: boolean;
+  similarityThreshold: number;
+  minSharedTokens: number;
+  maxPerCluster: number;
 }
 
 interface SemanticClassification {
@@ -242,6 +253,10 @@ const DEFAULT_FRONTPAGE_W1 = 0.6;
 const DEFAULT_FRONTPAGE_W2 = 0.25;
 const DEFAULT_FRONTPAGE_W3 = 0.1;
 const DEFAULT_FRONTPAGE_LAMBDA = 0.02;
+const DEFAULT_TOPIC_DEDUP_ENABLED = true;
+const DEFAULT_TOPIC_DEDUP_SIMILARITY = 0.55;
+const DEFAULT_TOPIC_DEDUP_MIN_SHARED_TOKENS = 5;
+const DEFAULT_TOPIC_DEDUP_MAX_PER_CLUSTER = 1;
 
 const EXCLUSION_TOKENS = [
   "meme",
@@ -292,6 +307,34 @@ const CATEGORY_MAP: Record<MarketCategory, string[]> = {
   other: [],
 };
 
+const TOPIC_STOPWORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "are",
+  "as",
+  "at",
+  "be",
+  "by",
+  "for",
+  "from",
+  "in",
+  "into",
+  "is",
+  "it",
+  "of",
+  "on",
+  "or",
+  "that",
+  "the",
+  "this",
+  "to",
+  "was",
+  "were",
+  "will",
+  "with",
+]);
+
 function asPositiveInt(value: string | undefined, fallback: number, min: number, max: number): number {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) {
@@ -329,6 +372,83 @@ function resolveFrontPageRankingConfig(env: RefreshEnv): FrontPageRankingConfig 
     w3: asFiniteNumber(env.COASENSUS_FRONTPAGE_W3, DEFAULT_FRONTPAGE_W3, 0, 10),
     lambda: asFiniteNumber(env.COASENSUS_FRONTPAGE_LAMBDA, DEFAULT_FRONTPAGE_LAMBDA, 0, 10),
   };
+}
+
+function resolveTopicDedupConfig(env: RefreshEnv): TopicDedupConfig {
+  return {
+    enabled: asBool(env.COASENSUS_TOPIC_DEDUP_ENABLED, DEFAULT_TOPIC_DEDUP_ENABLED),
+    similarityThreshold: asFiniteNumber(
+      env.COASENSUS_TOPIC_DEDUP_SIMILARITY,
+      DEFAULT_TOPIC_DEDUP_SIMILARITY,
+      0.2,
+      0.98
+    ),
+    minSharedTokens: asPositiveInt(
+      env.COASENSUS_TOPIC_DEDUP_MIN_SHARED_TOKENS,
+      DEFAULT_TOPIC_DEDUP_MIN_SHARED_TOKENS,
+      1,
+      20
+    ),
+    maxPerCluster: asPositiveInt(
+      env.COASENSUS_TOPIC_DEDUP_MAX_PER_CLUSTER,
+      DEFAULT_TOPIC_DEDUP_MAX_PER_CLUSTER,
+      1,
+      20
+    ),
+  };
+}
+
+function normalizeTopicToken(raw: string): string {
+  if (!raw) {
+    return "";
+  }
+  const compact = raw.toLowerCase();
+  if (/^\d+$/.test(compact)) {
+    return compact;
+  }
+  if (compact.endsWith("ies") && compact.length > 4) {
+    return `${compact.slice(0, -3)}y`;
+  }
+  if (compact.endsWith("es") && compact.length > 4) {
+    return compact.slice(0, -2);
+  }
+  if (compact.endsWith("s") && compact.length > 3) {
+    return compact.slice(0, -1);
+  }
+  return compact;
+}
+
+function topicTokenSet(question: string): Set<string> {
+  const tokens = question
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .map((token) => normalizeTopicToken(token))
+    .filter((token) => token.length >= 3 || /^\d+$/.test(token))
+    .filter((token) => !TOPIC_STOPWORDS.has(token));
+  return new Set(tokens);
+}
+
+function topicSimilarity(
+  aTokens: Set<string>,
+  bTokens: Set<string>
+): {
+  shared: number;
+  jaccard: number;
+} {
+  if (aTokens.size === 0 || bTokens.size === 0) {
+    return { shared: 0, jaccard: 0 };
+  }
+  let shared = 0;
+  for (const token of aTokens) {
+    if (bTokens.has(token)) {
+      shared += 1;
+    }
+  }
+  const union = aTokens.size + bTokens.size - shared;
+  const jaccard = union > 0 ? shared / union : 0;
+  return { shared, jaccard };
 }
 
 function parseTimestampMs(value: string | null): number | null {
@@ -1473,6 +1593,83 @@ function computeLlmCandidatePriority(market: Market): number {
   return Number(score.toFixed(6));
 }
 
+function applyTopicDeduplication(
+  curated: CuratedFeedItem[],
+  rejected: CuratedFeedItem[],
+  env: RefreshEnv
+): CurationResult {
+  const config = resolveTopicDedupConfig(env);
+  if (!config.enabled || curated.length <= 1) {
+    return { curated, rejected };
+  }
+
+  const kept: CuratedFeedItem[] = [];
+  const demoted: CuratedFeedItem[] = [];
+  const clusters: Array<{
+    anchorId: string;
+    category: MarketCategory;
+    tokens: Set<string>;
+    count: number;
+  }> = [];
+
+  for (const item of curated) {
+    const tokens = topicTokenSet(item.question);
+    let matchedCluster: (typeof clusters)[number] | null = null;
+    let bestScore = 0;
+
+    if (tokens.size > 0) {
+      for (const cluster of clusters) {
+        if (cluster.category !== item.score.category) {
+          continue;
+        }
+        const similarity = topicSimilarity(tokens, cluster.tokens);
+        if (similarity.shared < config.minSharedTokens) {
+          continue;
+        }
+        if (similarity.jaccard < config.similarityThreshold) {
+          continue;
+        }
+        if (similarity.jaccard > bestScore) {
+          bestScore = similarity.jaccard;
+          matchedCluster = cluster;
+        }
+      }
+    }
+
+    if (!matchedCluster) {
+      clusters.push({
+        anchorId: item.id,
+        category: item.score.category,
+        tokens,
+        count: 1,
+      });
+      kept.push(item);
+      continue;
+    }
+
+    if (matchedCluster.count < config.maxPerCluster) {
+      matchedCluster.count += 1;
+      kept.push(item);
+      continue;
+    }
+
+    demoted.push({
+      ...item,
+      isCurated: false,
+      decisionReason: `excluded_topic_duplicate_of_${matchedCluster.anchorId}`,
+      score: {
+        ...item.score,
+        reasonCodes: [...item.score.reasonCodes, `duplicate_of_${matchedCluster.anchorId}`],
+      },
+    });
+  }
+
+  return {
+    curated: kept,
+    rejected: [...rejected, ...demoted],
+  };
+}
+
 function curateMarkets(
   markets: Market[],
   semanticByMarketId: Map<string, SemanticClassification>,
@@ -1525,7 +1722,7 @@ function curateMarkets(
   }
 
   curated.sort((a, b) => b.frontPageScore - a.frontPageScore || a.id.localeCompare(b.id));
-  return { curated, rejected };
+  return applyTopicDeduplication(curated, rejected, env);
 }
 
 async function runBatchInChunks(db: D1Database, statements: D1PreparedStatement[], chunkSize = 50): Promise<void> {
