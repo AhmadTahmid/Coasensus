@@ -153,6 +153,9 @@ This file is the explicit handoff checkpoint.
 23. Validation checkpoint for parallel sprint:
    - `npm run check` passed
    - workflow YAML parsing passed for production and staging monitor workflows
+24. Staging monitor caveat:
+   - workflow is active, but latest manual run (`22232501844`) failed with `401` on `/api/admin/semantic-metrics`
+   - GitHub secret `COASENSUS_ADMIN_REFRESH_TOKEN` must match staging Worker admin token for green staging monitor runs.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

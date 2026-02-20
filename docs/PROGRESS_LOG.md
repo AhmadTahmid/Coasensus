@@ -284,3 +284,9 @@
    - `node --check apps/web/public/app.js` => success
    - `node --check scripts/monitor-production.mjs` => success
    - parsed monitor workflows with `js-yaml` => valid YAML.
+128. Post-push pipeline status for parallel sprint commit (`a50278c`):
+   - CI run `22232425671` => success
+   - Deploy Cloudflare run `22232425669` => success.
+129. Manual dispatch validation for new staging monitor:
+   - run `22232501844` executed and failed at telemetry auth (`401 Unauthorized`) on `/api/admin/semantic-metrics`
+   - indicates GitHub secret token does not currently match staging Worker `COASENSUS_ADMIN_REFRESH_TOKEN` value.
