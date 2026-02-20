@@ -19,16 +19,16 @@ jobs:
 
       - name: Validate Secret
         env:
-          COASENSUS_ADMIN_TOKEN: ${{ secrets.COASENSUS_ADMIN_REFRESH_TOKEN }}
+          COASENSUS_ADMIN_TOKEN: ${{ secrets.COASENSUS_ADMIN_REFRESH_TOKEN_STAGING }}
         run: |
           if [ -z "$COASENSUS_ADMIN_TOKEN" ]; then
-            echo "Missing required GitHub secret: COASENSUS_ADMIN_REFRESH_TOKEN"
+            echo "Missing required GitHub secret: COASENSUS_ADMIN_REFRESH_TOKEN_STAGING"
             exit 1
           fi
 
       - name: Run Staging Monitor
         env:
           COASENSUS_BASE_URL: "https://staging.coasensus.com"
-          COASENSUS_ADMIN_TOKEN: ${{ secrets.COASENSUS_ADMIN_REFRESH_TOKEN }}
+          COASENSUS_ADMIN_TOKEN: ${{ secrets.COASENSUS_ADMIN_REFRESH_TOKEN_STAGING }}
           COASENSUS_MAX_STALE_MINUTES: "90"
         run: node scripts/monitor-production.mjs
