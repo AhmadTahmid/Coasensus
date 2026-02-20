@@ -355,3 +355,24 @@
      - `sports: 1`
      - `entertainment: 0`
    - sports gating confirmed: `207` sports markets total, `206` rejected (mostly `excluded_semantic_news_threshold_sports`), `1` curated with news score `75`.
+144. Promoted semantic tuning pass #1 to `main`:
+   - merged branch `agent/semantic-tuning-pass1` as commit `4967a40`
+   - CI run `22236383073` => success
+   - Deploy Cloudflare run `22236383061` => success.
+145. Production post-deploy verification:
+   - monitor production run `22236791485` => success
+   - latest production refresh snapshot: `runId 2026-02-20T18-45-14-219Z` (`fetchedAt 2026-02-20T18:45:14.219Z`)
+   - telemetry healthy (`llmEnabled=true`, `llmFailures=0`).
+146. Production feed composition after semantic tuning pass #1:
+   - curated total reduced from `270` to `214`
+   - top 20 categories are fully politics/civic (`politics: 20`)
+   - curated category mix:
+     - `politics: 190`
+     - `economy: 13`
+     - `geopolitics: 8`
+     - `tech_ai: 3`
+     - `sports: 0`
+     - `entertainment: 0`
+   - sports/entertainment suppression confirmed in production:
+     - `sports`: `206` total, `0` curated
+     - `entertainment`: `96` total, `0` curated.

@@ -54,6 +54,7 @@
 ## EPIC-07 Post-Launch Tuning
 - [x] `TUNE-001` Prioritize LLM candidate selection and add category-specific sports/entertainment semantic thresholds
 - [x] `TUNE-002` Validate tuning impact on staging after a full refresh cycle
+- [x] `TUNE-003` Roll out semantic tuning pass #1 to production and verify monitor + feed composition
 
 ## Suggested assignment
 - Agent 1: EPIC-00

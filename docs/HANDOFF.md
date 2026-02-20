@@ -186,6 +186,20 @@ This file is the explicit handoff checkpoint.
      - `entertainment`: `96` total, `0` curated
 30. Next recommended step:
    - promote tuning patch to `main`, let CI deploy production, then verify production metrics + category composition with monitor and feed sampling script.
+31. Pass #1 promoted and verified in production:
+   - merged to `main` (`4967a40`)
+   - CI + Deploy Cloudflare succeeded (`22236383073`, `22236383061`)
+   - production refresh at `2026-02-20T18:45:14.219Z` picked up tuning profile.
+32. Production impact summary:
+   - curated items reduced to `214` (from `270`)
+   - top 20 cards now fully politics/civic
+   - curated `sports=0`, curated `entertainment=0`
+   - no semantic failures observed during post-rollout monitoring.
+33. Next tuning lane:
+   - evaluate over 24h window, then decide whether to:
+     - raise/decrease sports/entertainment floors
+     - adjust baseline `COASENSUS_LLM_MIN_NEWS_SCORE`
+     - increase `COASENSUS_LLM_MAX_MARKETS_PER_RUN` if cache misses grow.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
