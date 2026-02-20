@@ -27,6 +27,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Build filter-engine dependency
+        run: npm run --workspace @coasensus/filter-engine build
+
       - name: Test web
         run: npx vitest run --pool=threads --root apps/web
 

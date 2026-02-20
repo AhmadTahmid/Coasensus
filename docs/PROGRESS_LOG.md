@@ -256,3 +256,10 @@
    - updated CI step to run `services/ingest-worker` tests with `--pool=forks --maxWorkers=1 --minWorkers=1`.
 117. Verified ingest-worker stability command on Linux Node 22 container:
    - command passed with all 13 ingest-worker tests green.
+118. Root cause found for CI ingest-worker failures:
+   - `services/ingest-worker/src/feed-store.ts` imports `@coasensus/filter-engine`
+   - CI test path did not build `filter-engine` first, so Vite could not resolve package entry (`dist/index.js` missing).
+119. CI fix applied:
+   - added `Build filter-engine dependency` step before test steps in `.github/workflows/ci.yml`.
+120. Revalidated complete CI command chain in Linux Node 22 container after cleanup of `dist/` folders:
+   - typecheck + lint + filter-engine build + all workspace tests passed.

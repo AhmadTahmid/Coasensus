@@ -138,6 +138,9 @@ This file is the explicit handoff checkpoint.
 19. CI ingest-worker stabilization:
    - `ingest-worker` CI test step now uses single-worker forks mode to reduce flaky runner behavior
    - Linux container validation passed with updated ingest-worker command
+20. CI dependency resolution fix:
+   - `filter-engine` build step added before tests so downstream import (`@coasensus/filter-engine`) resolves during ingest-worker suite.
+   - full CI-equivalent Linux container run now passes from clean `dist/` state.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
