@@ -35,6 +35,7 @@ interface CuratedFeedItem extends Market {
   isCurated: boolean;
   decisionReason: string;
   score: MarketScoreBreakdown;
+  frontPageScore: number;
 }
 
 interface RawPolymarketMarket {
@@ -89,6 +90,10 @@ interface RefreshEnv {
   COASENSUS_LLM_PROMPT_VERSION?: string;
   COASENSUS_LLM_MIN_NEWS_SCORE?: string;
   COASENSUS_LLM_MAX_MARKETS_PER_RUN?: string;
+  COASENSUS_FRONTPAGE_W1?: string;
+  COASENSUS_FRONTPAGE_W2?: string;
+  COASENSUS_FRONTPAGE_W3?: string;
+  COASENSUS_FRONTPAGE_LAMBDA?: string;
 }
 
 interface FetchOptions {
@@ -118,6 +123,13 @@ interface NormalizationResult {
 interface CurationResult {
   curated: CuratedFeedItem[];
   rejected: CuratedFeedItem[];
+}
+
+interface FrontPageRankingConfig {
+  w1: number;
+  w2: number;
+  w3: number;
+  lambda: number;
 }
 
 interface SemanticClassification {
@@ -208,6 +220,10 @@ const DEFAULT_LLM_BASE_URL = "https://api.openai.com/v1";
 const DEFAULT_LLM_PROMPT_VERSION = "v1";
 const DEFAULT_LLM_MIN_NEWS_SCORE = 55;
 const DEFAULT_LLM_MAX_MARKETS_PER_RUN = 150;
+const DEFAULT_FRONTPAGE_W1 = 0.6;
+const DEFAULT_FRONTPAGE_W2 = 0.25;
+const DEFAULT_FRONTPAGE_W3 = 0.1;
+const DEFAULT_FRONTPAGE_LAMBDA = 0.02;
 
 const EXCLUSION_TOKENS = [
   "meme",
@@ -286,6 +302,50 @@ function asFiniteNumber(value: string | undefined, fallback: number, min: number
     return fallback;
   }
   return Math.min(max, Math.max(min, parsed));
+}
+
+function resolveFrontPageRankingConfig(env: RefreshEnv): FrontPageRankingConfig {
+  return {
+    w1: asFiniteNumber(env.COASENSUS_FRONTPAGE_W1, DEFAULT_FRONTPAGE_W1, 0, 10),
+    w2: asFiniteNumber(env.COASENSUS_FRONTPAGE_W2, DEFAULT_FRONTPAGE_W2, 0, 10),
+    w3: asFiniteNumber(env.COASENSUS_FRONTPAGE_W3, DEFAULT_FRONTPAGE_W3, 0, 10),
+    lambda: asFiniteNumber(env.COASENSUS_FRONTPAGE_LAMBDA, DEFAULT_FRONTPAGE_LAMBDA, 0, 10),
+  };
+}
+
+function parseTimestampMs(value: string | null): number | null {
+  if (!value) {
+    return null;
+  }
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function computeDeltaHours(market: Market, nowMs: number): number {
+  const ts = parseTimestampMs(market.updatedAt) ?? parseTimestampMs(market.createdAt);
+  if (ts === null) {
+    return 0;
+  }
+  const deltaMs = Math.max(0, nowMs - ts);
+  return deltaMs / (1000 * 60 * 60);
+}
+
+function computeFrontPageScore(
+  market: Market,
+  newsworthinessScore: number,
+  config: FrontPageRankingConfig,
+  nowMs: number
+): number {
+  const sLlm = Math.max(0, Math.min(100, newsworthinessScore)) / 100;
+  const volume = Math.max(0, market.volume ?? 0);
+  const liquidity = Math.max(0, market.liquidity ?? 0);
+  const deltaHours = computeDeltaHours(market, nowMs);
+  const score =
+    config.w1 * sLlm +
+    config.w2 * Math.log(volume + 1) +
+    config.w3 * Math.log(liquidity + 1) -
+    config.lambda * deltaHours;
+  return Number(score.toFixed(6));
 }
 
 function normalizeGeoTag(value: string | null | undefined): string {
@@ -1167,12 +1227,15 @@ function curateMarkets(
   const rejected: CuratedFeedItem[] = [];
   const civicThreshold = 2;
   const newsThreshold = llmMinNewsScore(env);
+  const rankingConfig = resolveFrontPageRankingConfig(env);
+  const rankingNowMs = Date.now();
 
   for (const market of markets) {
     const corpus = toCorpus(market);
     const exclusionReason = isStrictExcludedByToken(corpus);
     const semantic = semanticByMarketId.get(market.id) ?? heuristicSemanticClassification(market, promptVersion);
     const score = createScoreBreakdown(market, semantic);
+    const frontPageScore = computeFrontPageScore(market, score.newsworthinessScore, rankingConfig, rankingNowMs);
 
     let isCurated = false;
     let decisionReason = "excluded_semantic_below_threshold";
@@ -1191,6 +1254,7 @@ function curateMarkets(
       isCurated,
       decisionReason,
       score,
+      frontPageScore,
     };
 
     if (isCurated) {
@@ -1200,7 +1264,7 @@ function curateMarkets(
     }
   }
 
-  curated.sort((a, b) => b.score.civicScore + b.score.newsworthinessScore - (a.score.civicScore + a.score.newsworthinessScore));
+  curated.sort((a, b) => b.frontPageScore - a.frontPageScore || a.id.localeCompare(b.id));
   return { curated, rejected };
 }
 
@@ -1210,6 +1274,16 @@ async function runBatchInChunks(db: D1Database, statements: D1PreparedStatement[
     if (chunk.length > 0) {
       await db.batch(chunk);
     }
+  }
+}
+
+async function curatedFeedHasColumn(db: D1Database, columnName: string): Promise<boolean> {
+  try {
+    const rows = await db.prepare("PRAGMA table_info(curated_feed)").all<{ name: string }>();
+    return (rows.results ?? []).some((row) => row.name === columnName);
+  } catch (error) {
+    console.error("Failed to inspect curated_feed schema", error);
+    return false;
   }
 }
 
@@ -1225,49 +1299,75 @@ async function replaceCuratedFeedSnapshot(
 ): Promise<void> {
   await db.prepare("DELETE FROM curated_feed").run();
 
-  const insertSql = `
-    INSERT INTO curated_feed (
-      market_id,
-      question,
-      description,
-      url,
-      end_date,
-      liquidity,
-      volume,
-      open_interest,
-      category,
-      civic_score,
-      newsworthiness_score,
-      is_curated,
-      decision_reason,
-      reason_codes_json,
-      created_at,
-      updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
+  const hasFrontPageScore = await curatedFeedHasColumn(db, "front_page_score");
 
-  const statements = items.map((item) =>
-    db
-      .prepare(insertSql)
-      .bind(
-        item.id,
-        item.question,
-        item.description,
-        item.url,
-        item.endDate,
-        item.liquidity,
-        item.volume,
-        item.openInterest,
-        item.score.category,
-        item.score.civicScore,
-        item.score.newsworthinessScore,
-        item.isCurated ? 1 : 0,
-        item.decisionReason,
-        JSON.stringify(item.score.reasonCodes),
-        item.createdAt,
-        item.updatedAt
-      )
-  );
+  const insertSql = hasFrontPageScore
+    ? `
+        INSERT INTO curated_feed (
+          market_id,
+          question,
+          description,
+          url,
+          end_date,
+          liquidity,
+          volume,
+          open_interest,
+          category,
+          civic_score,
+          newsworthiness_score,
+          front_page_score,
+          is_curated,
+          decision_reason,
+          reason_codes_json,
+          created_at,
+          updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `
+    : `
+        INSERT INTO curated_feed (
+          market_id,
+          question,
+          description,
+          url,
+          end_date,
+          liquidity,
+          volume,
+          open_interest,
+          category,
+          civic_score,
+          newsworthiness_score,
+          is_curated,
+          decision_reason,
+          reason_codes_json,
+          created_at,
+          updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+
+  const statements = items.map((item) => {
+    const common = [
+      item.id,
+      item.question,
+      item.description,
+      item.url,
+      item.endDate,
+      item.liquidity,
+      item.volume,
+      item.openInterest,
+      item.score.category,
+      item.score.civicScore,
+      item.score.newsworthinessScore,
+    ];
+    const tail = [
+      item.isCurated ? 1 : 0,
+      item.decisionReason,
+      JSON.stringify(item.score.reasonCodes),
+      item.createdAt,
+      item.updatedAt,
+    ];
+    const bindings = hasFrontPageScore ? [...common, item.frontPageScore, ...tail] : [...common, ...tail];
+    return db.prepare(insertSql).bind(...bindings);
+  });
 
   await runBatchInChunks(db, statements, 50);
 

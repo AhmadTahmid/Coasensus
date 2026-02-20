@@ -113,3 +113,28 @@
 66. Committed and pushed Phase-2 implementation to `feat/execution-plan-v2`:
    - commit: `bcda054`
    - message: `feat: add semantic cache enrichment and llm editor scaffold`
+67. Implemented `SEM-007` front-page ranking formula in Worker refresh/API path:
+   - `Front Page Score = (w1 * S_LLM) + (w2 * log(V+1)) + (w3 * log(L+1)) - (lambda * delta_t)`
+   - `S_LLM = newsworthinessScore / 100`
+   - `delta_t = hours since updatedAt (fallback: createdAt)`
+68. Added configurable ranking vars in Cloudflare config:
+   - `COASENSUS_FRONTPAGE_W1`
+   - `COASENSUS_FRONTPAGE_W2`
+   - `COASENSUS_FRONTPAGE_W3`
+   - `COASENSUS_FRONTPAGE_LAMBDA`
+69. Added D1 migration `0003_front_page_score.sql`:
+   - adds `curated_feed.front_page_score`
+   - adds index `idx_curated_feed_front_page_score`
+70. Updated feed API `sort=score` ordering to use `front_page_score` when available, with automatic fallback to legacy ordering if migration is not yet applied.
+71. Added API response metadata/field for observability:
+   - `meta.scoreFormula` (`front_page_score_v1` or legacy)
+   - item field `frontPageScore`
+72. Updated algorithm and infra docs to reflect formula-driven ranking and new env controls.
+73. Verified locally after applying migration `0003`:
+   - manual refresh returned `200`
+   - `/api/feed?sort=score` returned `scoreFormula: front_page_score_v1`
+   - ranked items included populated `frontPageScore` values.
+74. Applied migration `0003_front_page_score.sql` to remote staging D1 and deployed updated staging Worker (version `335900ab-c578-46e2-af4d-fc14a69d3e12`).
+75. Verified staging API now reports formula mode:
+   - `meta.scoreFormula = front_page_score_v1`
+   - `frontPageScore` currently `0` on existing rows until next refresh run updates snapshot scores.

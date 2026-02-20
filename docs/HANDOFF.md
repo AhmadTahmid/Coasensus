@@ -13,7 +13,7 @@ This file is the explicit handoff checkpoint.
 6. `docs/FILTER_ALGORITHM.md`
 
 ## Current checkpoint
-1. Last pushed commit on active execution branch: `bcda054` (`feat/execution-plan-v2`)
+1. Last pushed commit on active execution branch: run `git log --oneline -n 1`
 2. Repo: `https://github.com/AhmadTahmid/Coasensus`
 3. Baseline branch: `main`
 4. Active execution branch for new plan: `feat/execution-plan-v2`
@@ -82,9 +82,18 @@ This file is the explicit handoff checkpoint.
 6. Local smoke verification completed:
    - `POST /api/admin/refresh-feed` returned `200` in local wrangler dev
    - feed returned non-empty items and semantic decision reasons
-7. Pending next milestone:
+7. Front-page ranking formula milestone completed (`SEM-007`):
+   - formula implemented and persisted in `curated_feed.front_page_score`
+   - feed API `sort=score` prefers `front_page_score` with fallback to legacy sort if migration missing
+   - API now returns `meta.scoreFormula` and per-item `frontPageScore`
+8. Staging rollout status:
+   - remote D1 migration `0003_front_page_score.sql` applied
+   - staging Worker deployed (`335900ab-c578-46e2-af4d-fc14a69d3e12`)
+   - note: existing rows show `frontPageScore=0` until next refresh snapshot writes computed scores
+9. Pending next milestone:
    - enable LLM in staging with `COASENSUS_LLM_API_KEY`
    - tune semantic thresholds and ranking weights using observed outcomes
+   - add semantic telemetry/reporting (`SEM-008`)
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

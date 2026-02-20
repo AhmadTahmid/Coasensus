@@ -33,6 +33,11 @@ Reads from D1 tables:
    - `COASENSUS_LLM_MIN_NEWS_SCORE`
    - `COASENSUS_LLM_MAX_MARKETS_PER_RUN`
    - Worker secret required: `COASENSUS_LLM_API_KEY`
+5. Front-page ranking formula weights (used for `sort=score`):
+   - `COASENSUS_FRONTPAGE_W1` (LLM/news term)
+   - `COASENSUS_FRONTPAGE_W2` (log-volume term)
+   - `COASENSUS_FRONTPAGE_W3` (log-liquidity term)
+   - `COASENSUS_FRONTPAGE_LAMBDA` (time-decay penalty per hour)
 
 ## Local dev (Wrangler)
 Run from repo root:

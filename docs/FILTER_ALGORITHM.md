@@ -46,6 +46,12 @@ Semantic layer defaults:
 - `COASENSUS_LLM_MIN_NEWS_SCORE=55`
 - `COASENSUS_LLM_MAX_MARKETS_PER_RUN=150`
 
+Front-page ranking defaults:
+- `COASENSUS_FRONTPAGE_W1=0.6`
+- `COASENSUS_FRONTPAGE_W2=0.25`
+- `COASENSUS_FRONTPAGE_W3=0.1`
+- `COASENSUS_FRONTPAGE_LAMBDA=0.02`
+
 ## 4. Canonical market fields
 
 Each raw Polymarket record is normalized to:
@@ -150,7 +156,13 @@ Important:
 ## 10. Feed ranking and ordering
 
 Default feed sorting (`sort=score`):
-- Order by `(civic_score + newsworthiness_score) DESC`
+- Compute:
+  - `Front Page Score = (w1 * S_LLM) + (w2 * log(V + 1)) + (w3 * log(L + 1)) - (lambda * delta_t)`
+  - `S_LLM = newsworthinessScore / 100` (normalized 0..1)
+  - `V = volume`
+  - `L = liquidity`
+  - `delta_t = hours since market updatedAt` (fallback: `createdAt`)
+- Order by `front_page_score DESC`
 - Tie-breaker: `market_id ASC`
 
 Other supported sorts:
@@ -165,9 +177,9 @@ Default API behavior:
 ## 11. Why some markets appear first
 
 Markets appear at the top when they combine:
-- Strong civic keyword signals
-- High market activity/liquidity/open interest
-- Near-term resolution urgency
+- High semantic newsworthiness (`S_LLM`)
+- Strong market participation (`volume`, `liquidity`) with log scaling
+- Recent activity (lower time-decay penalty)
 
 In practice, high-liquidity political/policy markets often rank first.
 

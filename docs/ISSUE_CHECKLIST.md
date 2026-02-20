@@ -48,7 +48,7 @@
 - [x] `SEM-004` Extend categories across API/filter/UI/shared contracts (`tech_ai`, `sports`, `entertainment`)
 - [x] `SEM-005` Add `services/llm-editor` scaffold with schema/editor tests
 - [ ] `SEM-006` Enable LLM in staging and compare heuristic vs LLM output quality
-- [ ] `SEM-007` Implement final front-page ranking formula in API ordering path
+- [x] `SEM-007` Implement final front-page ranking formula in API ordering path
 - [ ] `SEM-008` Add semantic quality telemetry dashboard/report
 
 ## Suggested assignment

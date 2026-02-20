@@ -37,6 +37,10 @@ interface Env {
   COASENSUS_LLM_PROMPT_VERSION?: string;
   COASENSUS_LLM_MIN_NEWS_SCORE?: string;
   COASENSUS_LLM_MAX_MARKETS_PER_RUN?: string;
+  COASENSUS_FRONTPAGE_W1?: string;
+  COASENSUS_FRONTPAGE_W2?: string;
+  COASENSUS_FRONTPAGE_W3?: string;
+  COASENSUS_FRONTPAGE_LAMBDA?: string;
 }
 
 interface CuratedFeedRow {
@@ -51,6 +55,7 @@ interface CuratedFeedRow {
   category: string;
   civic_score: number;
   newsworthiness_score: number;
+  front_page_score?: number | null;
   is_curated: number;
   decision_reason: string;
   reason_codes_json: string | null;
@@ -81,8 +86,7 @@ const CATEGORY_SET = new Set<MarketCategory>([
   "other",
 ]);
 
-const SORT_SQL: Record<FeedSort, string> = {
-  score: "(civic_score + newsworthiness_score) DESC, market_id ASC",
+const NON_SCORE_SORT_SQL: Record<Exclude<FeedSort, "score">, string> = {
   volume: "COALESCE(volume, -1) DESC, market_id ASC",
   liquidity: "COALESCE(liquidity, -1) DESC, market_id ASC",
   endDate: "CASE WHEN end_date IS NULL THEN 1 ELSE 0 END ASC, end_date ASC, market_id ASC",
@@ -150,6 +154,26 @@ function parseReasonCodes(value: string | null): string[] {
   } catch {
     return [];
   }
+}
+
+async function curatedFeedHasColumn(db: D1Database, columnName: string): Promise<boolean> {
+  try {
+    const rows = await db.prepare("PRAGMA table_info(curated_feed)").all<{ name: string }>();
+    return (rows.results ?? []).some((row) => row.name === columnName);
+  } catch (error) {
+    console.error("Failed to inspect curated_feed schema", asErrorMessage(error));
+    return false;
+  }
+}
+
+function resolveSortSql(sort: FeedSort, hasFrontPageScore: boolean): string {
+  if (sort === "score") {
+    if (hasFrontPageScore) {
+      return "COALESCE(front_page_score, (civic_score + newsworthiness_score)) DESC, market_id ASC";
+    }
+    return "(civic_score + newsworthiness_score) DESC, market_id ASC";
+  }
+  return NON_SCORE_SORT_SQL[sort];
 }
 
 function resolveOrigin(request: Request, env: Env): string {
@@ -241,6 +265,9 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
     }
 
     const whereSql = whereParts.length > 0 ? `WHERE ${whereParts.join(" AND ")}` : "";
+    const hasFrontPageScore = await curatedFeedHasColumn(env.DB, "front_page_score");
+    const orderBySql = resolveSortSql(sort, hasFrontPageScore);
+    const frontPageSelectSql = hasFrontPageScore ? "front_page_score," : "";
 
     let refreshSummary: Awaited<ReturnType<typeof refreshCuratedFeed>> | null = null;
     let refreshError: string | null = null;
@@ -279,6 +306,7 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
         category,
         civic_score,
         newsworthiness_score,
+        ${frontPageSelectSql}
         is_curated,
         decision_reason,
         reason_codes_json,
@@ -286,7 +314,7 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
         updated_at
       FROM curated_feed
       ${whereSql}
-      ORDER BY ${SORT_SQL[sort]}
+      ORDER BY ${orderBySql}
       LIMIT ?
       OFFSET ?
     `;
@@ -315,6 +343,7 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
         category: toCategory(row.category),
         reasonCodes: parseReasonCodes(row.reason_codes_json),
       },
+      frontPageScore: toNumberOrNull(row.front_page_score),
     }));
 
     return json(
@@ -330,6 +359,7 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
           category,
           includeRejected,
           sourcePath: "d1:curated_feed",
+          scoreFormula: hasFrontPageScore ? "front_page_score_v1" : "legacy_civic_plus_newsworthiness",
           refreshAttempted: refreshSummary !== null || refreshError !== null,
           refreshRunId: refreshSummary?.runId ?? null,
           refreshError,

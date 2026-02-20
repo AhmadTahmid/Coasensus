@@ -35,4 +35,5 @@ export interface CuratedFeedItem extends Market {
   isCurated: boolean;
   decisionReason: string;
   score: MarketScoreBreakdown;
+  frontPageScore?: number | null;
 }
