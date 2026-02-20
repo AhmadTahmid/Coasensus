@@ -76,3 +76,14 @@
 54. Added algorithm documentation for non-technical and technical readers:
    - `docs/FILTER_ALGORITHM.md`
    - linked from root `README.md`
+55. Started execution of `docs/EXECUTION_PLAN_V2.md` on branch `feat/execution-plan-v2`.
+56. Implemented Phase-1 pre-filter "Bouncer" controls in Cloudflare refresh pipeline:
+   - server-side Polymarket query filters (`volume_num_min`, `liquidity_num_min`, `start_date_min`, `end_date_min`)
+   - local fallback bouncer checks on volume, liquidity, min hours to end, and max market age
+   - new env controls in Wrangler config:
+     - `COASENSUS_BOUNCER_MIN_VOLUME`
+     - `COASENSUS_BOUNCER_MIN_LIQUIDITY`
+     - `COASENSUS_BOUNCER_MIN_HOURS_TO_END`
+     - `COASENSUS_BOUNCER_MAX_MARKET_AGE_DAYS`
+57. Added `bouncerDroppedCount` to refresh summary for observability.
+58. Deployed staging with bouncer-enabled refresh and verified successful ingest response.

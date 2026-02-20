@@ -31,6 +31,12 @@ Pagination defaults:
 
 So one refresh typically evaluates up to `800` markets.
 
+Bouncer pre-filter defaults (before semantic scoring):
+- `COASENSUS_BOUNCER_MIN_VOLUME=10000`
+- `COASENSUS_BOUNCER_MIN_LIQUIDITY=5000`
+- `COASENSUS_BOUNCER_MIN_HOURS_TO_END=2`
+- `COASENSUS_BOUNCER_MAX_MARKET_AGE_DAYS=365`
+
 ## 4. Canonical market fields
 
 Each raw Polymarket record is normalized to:

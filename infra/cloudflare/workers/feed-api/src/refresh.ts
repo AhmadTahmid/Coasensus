@@ -42,6 +42,8 @@ interface RawPolymarketMarket {
   question?: string;
   title?: string;
   description?: string;
+  startDate?: string;
+  start_date?: string;
   endDate?: string;
   end_date?: string;
   resolutionDate?: string;
@@ -73,6 +75,10 @@ interface RefreshEnv {
   COASENSUS_INGEST_RETRIES?: string;
   COASENSUS_INGEST_TIMEOUT_MS?: string;
   COASENSUS_INGEST_RETRY_BACKOFF_MS?: string;
+  COASENSUS_BOUNCER_MIN_VOLUME?: string;
+  COASENSUS_BOUNCER_MIN_LIQUIDITY?: string;
+  COASENSUS_BOUNCER_MIN_HOURS_TO_END?: string;
+  COASENSUS_BOUNCER_MAX_MARKET_AGE_DAYS?: string;
 }
 
 interface FetchOptions {
@@ -82,11 +88,16 @@ interface FetchOptions {
   requestTimeoutMs: number;
   retries: number;
   retryBackoffMs: number;
+  minVolume: number;
+  minLiquidity: number;
+  minHoursToEnd: number;
+  maxMarketAgeDays: number;
 }
 
 interface ActiveMarketsFetchResult {
   markets: RawPolymarketMarket[];
   pagesFetched: number;
+  droppedByBouncer: number;
 }
 
 interface NormalizationResult {
@@ -110,6 +121,7 @@ export interface RefreshSummary {
   fetchedAt: string;
   pagesFetched: number;
   rawCount: number;
+  bouncerDroppedCount: number;
   normalizedCount: number;
   droppedCount: number;
   curatedCount: number;
@@ -129,6 +141,10 @@ const DEFAULT_FETCH_OPTIONS: FetchOptions = {
   requestTimeoutMs: 12_000,
   retries: 2,
   retryBackoffMs: 400,
+  minVolume: 10_000,
+  minLiquidity: 5_000,
+  minHoursToEnd: 2,
+  maxMarketAgeDays: 365,
 };
 
 const EXCLUSION_TOKENS = [
@@ -196,6 +212,25 @@ function resolveFetchOptions(env: RefreshEnv): FetchOptions {
       0,
       10000
     ),
+    minVolume: asPositiveInt(env.COASENSUS_BOUNCER_MIN_VOLUME, DEFAULT_FETCH_OPTIONS.minVolume, 0, 1_000_000_000),
+    minLiquidity: asPositiveInt(
+      env.COASENSUS_BOUNCER_MIN_LIQUIDITY,
+      DEFAULT_FETCH_OPTIONS.minLiquidity,
+      0,
+      1_000_000_000
+    ),
+    minHoursToEnd: asPositiveInt(
+      env.COASENSUS_BOUNCER_MIN_HOURS_TO_END,
+      DEFAULT_FETCH_OPTIONS.minHoursToEnd,
+      0,
+      24 * 30
+    ),
+    maxMarketAgeDays: asPositiveInt(
+      env.COASENSUS_BOUNCER_MAX_MARKET_AGE_DAYS,
+      DEFAULT_FETCH_OPTIONS.maxMarketAgeDays,
+      1,
+      3650
+    ),
   };
 }
 
@@ -210,13 +245,22 @@ function normalizeBaseUrl(baseUrl: string): string {
   return baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
 }
 
-function buildPageUrl(baseUrl: string, limit: number, offset: number): string {
+function buildPageUrl(baseUrl: string, options: FetchOptions, offset: number): string {
   const url = new URL(`${normalizeBaseUrl(baseUrl)}/markets`);
   url.searchParams.set("active", "true");
   url.searchParams.set("closed", "false");
   url.searchParams.set("archived", "false");
-  url.searchParams.set("limit", String(limit));
+  url.searchParams.set("limit", String(options.limitPerPage));
   url.searchParams.set("offset", String(offset));
+  url.searchParams.set("volume_num_min", String(options.minVolume));
+  url.searchParams.set("liquidity_num_min", String(options.minLiquidity));
+
+  const now = Date.now();
+  const earliestStartMs = now - options.maxMarketAgeDays * 24 * 60 * 60 * 1000;
+  const minEndMs = now + options.minHoursToEnd * 60 * 60 * 1000;
+  url.searchParams.set("start_date_min", new Date(earliestStartMs).toISOString());
+  url.searchParams.set("end_date_min", new Date(minEndMs).toISOString());
+
   return url.toString();
 }
 
@@ -274,14 +318,50 @@ function isLikelyActiveMarket(market: RawPolymarketMarket): boolean {
   return true;
 }
 
+function asDateMsOrNull(value: unknown): number | null {
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function passesBouncer(market: RawPolymarketMarket, options: FetchOptions): boolean {
+  const volume = asNumberOrNull(market.volume ?? market.volumeNum) ?? 0;
+  const liquidity = asNumberOrNull(market.liquidity ?? market.liquidityNum) ?? 0;
+  if (volume < options.minVolume) {
+    return false;
+  }
+  if (liquidity < options.minLiquidity) {
+    return false;
+  }
+
+  const now = Date.now();
+  const minEndMs = now + options.minHoursToEnd * 60 * 60 * 1000;
+  const endMs = asDateMsOrNull(market.endDate) ?? asDateMsOrNull(market.end_date) ?? asDateMsOrNull(market.resolutionDate);
+  if (endMs !== null && endMs < minEndMs) {
+    return false;
+  }
+
+  const earliestStartMs = now - options.maxMarketAgeDays * 24 * 60 * 60 * 1000;
+  const startMs =
+    asDateMsOrNull(market.startDate) ?? asDateMsOrNull(market.start_date) ?? asDateMsOrNull(market.createdAt);
+  if (startMs !== null && startMs < earliestStartMs) {
+    return false;
+  }
+
+  return true;
+}
+
 async function fetchActiveMarkets(options: FetchOptions): Promise<ActiveMarketsFetchResult> {
   const seenIds = new Set<string>();
   const markets: RawPolymarketMarket[] = [];
   let pagesFetched = 0;
+  let droppedByBouncer = 0;
 
   for (let page = 0; page < options.maxPages; page += 1) {
     const offset = page * options.limitPerPage;
-    const url = buildPageUrl(options.baseUrl, options.limitPerPage, offset);
+    const url = buildPageUrl(options.baseUrl, options, offset);
     const pageData = await fetchPageWithRetry(url, options.retries, options.retryBackoffMs, options.requestTimeoutMs);
     pagesFetched += 1;
 
@@ -293,6 +373,10 @@ async function fetchActiveMarkets(options: FetchOptions): Promise<ActiveMarketsF
       if (!id || seenIds.has(id)) {
         continue;
       }
+      if (!passesBouncer(market, options)) {
+        droppedByBouncer += 1;
+        continue;
+      }
       seenIds.add(id);
       markets.push(market);
     }
@@ -302,7 +386,7 @@ async function fetchActiveMarkets(options: FetchOptions): Promise<ActiveMarketsF
     }
   }
 
-  return { markets, pagesFetched };
+  return { markets, pagesFetched, droppedByBouncer };
 }
 
 function asNumberOrNull(value: unknown): number | null {
@@ -684,7 +768,7 @@ export async function refreshCuratedFeed(env: RefreshEnv): Promise<RefreshSummar
     fetched.pagesFetched,
     fetched.markets.length,
     normalized.markets.length,
-    normalized.dropped,
+    normalized.dropped + fetched.droppedByBouncer,
     allItems
   );
   const persistMs = Date.now() - persistStarted;
@@ -694,8 +778,9 @@ export async function refreshCuratedFeed(env: RefreshEnv): Promise<RefreshSummar
     fetchedAt,
     pagesFetched: fetched.pagesFetched,
     rawCount: fetched.markets.length,
+    bouncerDroppedCount: fetched.droppedByBouncer,
     normalizedCount: normalized.markets.length,
-    droppedCount: normalized.dropped,
+    droppedCount: normalized.dropped + fetched.droppedByBouncer,
     curatedCount: curation.curated.length,
     rejectedCount: curation.rejected.length,
     metrics: {

@@ -15,8 +15,9 @@ This file is the explicit handoff checkpoint.
 ## Current checkpoint
 1. Last pushed commit: run `git log --oneline -n 1`
 2. Repo: `https://github.com/AhmadTahmid/Coasensus`
-3. Working branch: `main`
-4. Core stack status:
+3. Baseline branch: `main`
+4. Active execution branch for new plan: `feat/execution-plan-v2`
+5. Core stack status:
    - Ingestion client: implemented
    - Local persistence: implemented (`infra/db/local`)
    - Feed API: implemented (`/health`, `/feed`)
