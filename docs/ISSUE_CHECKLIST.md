@@ -26,6 +26,7 @@
 - [x] `WEB-003` Add category badges and sorting controls
 - [x] `WEB-004` Add empty/loading/error states
 - [x] `WEB-005` Add basic analytics events
+- [x] `WEB-006` Add feed text search (`q`) in API + web controls
 
 ## EPIC-04 Infra + Deploy
 - [x] `INF-001` Configure staging + production environments

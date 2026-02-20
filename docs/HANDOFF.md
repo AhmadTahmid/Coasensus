@@ -217,6 +217,19 @@ This file is the explicit handoff checkpoint.
    - added `docs/ROADMAP_QUEUE.md` to track `Now / Next / Later` milestones and avoid losing deferred work while moving fast.
 37. Recommended next action:
    - if staging looks good for 1-2 additional refresh cycles, promote this branch to `main` and verify production composition.
+38. Production verification after de-dup promotion:
+   - monitor run `22239669070` => success
+   - latest production refresh snapshot: `runId 2026-02-20T20-15-11-010Z`
+   - production curated feed count settled at `83` with healthy staleness window.
+39. Search milestone pass #1 (`MILESTONE-UI-SEARCH-002`):
+   - added API query filter `q` (also accepts alias `search`) on `question` + `description`
+   - added web control (`Search`) and query wiring to include `q` in feed requests
+   - updated analytics payloads and feed meta chips to include active search state.
+40. Validation for search milestone:
+   - `npm run check` => success
+   - web unit tests updated for query-string builder search behavior.
+41. Next recommended milestone:
+   - implement `MILESTONE-REGION-003` (expose `geo_tag`, add region filter in API/UI, then tune category x region composition).
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

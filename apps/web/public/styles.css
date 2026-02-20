@@ -84,7 +84,7 @@ body {
 .controls {
   margin-top: 18px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(240px, 2fr) repeat(3, minmax(0, 1fr)) auto;
   gap: 12px;
 }
 
@@ -99,6 +99,7 @@ body {
 }
 
 .controls select,
+.controls input[type="search"],
 .button {
   height: 42px;
   border-radius: 10px;
@@ -109,6 +110,10 @@ body {
 }
 
 .controls select {
+  background: #fffcf3;
+}
+
+.controls input[type="search"] {
   background: #fffcf3;
 }
 

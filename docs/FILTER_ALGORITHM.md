@@ -206,6 +206,7 @@ This prevents the front page from being dominated by many variants of the same u
 Default API behavior:
 - Returns only curated markets (`is_curated = 1`)
 - Paginated response (`page`, `pageSize`)
+- Optional text search with `q=<term>` against market `question` and `description`
 
 ## 12. Why some markets appear first
 
@@ -220,7 +221,7 @@ In practice, high-liquidity political/policy markets often rank first.
 
 This is still mostly heuristic + prompt-based filtering, so:
 - It can still miss nuanced civic relevance.
-- It is not yet event-deduplicated (same event may appear in multiple variants).
+- Topic de-dup is lexical; semantically similar events with different wording can still slip through.
 - It does not yet use external source credibility scoring.
 
 ## 14. Source of truth in code

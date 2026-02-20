@@ -151,6 +151,7 @@ const NON_SCORE_SORT_SQL: Record<Exclude<FeedSort, "score">, string> = {
   liquidity: "COALESCE(liquidity, -1) DESC, market_id ASC",
   endDate: "CASE WHEN end_date IS NULL THEN 1 ELSE 0 END ASC, end_date ASC, market_id ASC",
 };
+const SEARCH_QUERY_MAX_CHARS = 120;
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -193,6 +194,21 @@ function asCategory(value: string | null): MarketCategory | null {
     return null;
   }
   return CATEGORY_SET.has(value as MarketCategory) ? (value as MarketCategory) : null;
+}
+
+function asSearchQuery(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+  const normalized = value.trim().replace(/\s+/g, " ");
+  if (!normalized) {
+    return null;
+  }
+  return normalized.slice(0, SEARCH_QUERY_MAX_CHARS);
+}
+
+function escapeLikePattern(value: string): string {
+  return value.replace(/([%_\\])/g, "\\$1");
 }
 
 function toCategory(value: string): MarketCategory {
@@ -312,6 +328,7 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
     const pageSize = asPositiveInt(url.searchParams.get("pageSize"), defaultPageSize(env), 1, 100);
     const sort = asFeedSort(url.searchParams.get("sort"));
     const category = asCategory(url.searchParams.get("category"));
+    const searchQuery = asSearchQuery(url.searchParams.get("q") ?? url.searchParams.get("search"));
     const includeRejected = url.searchParams.get("includeRejected") === "1";
 
     const whereParts: string[] = [];
@@ -322,6 +339,13 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
     if (category) {
       whereParts.push("category = ?");
       whereBindings.push(category);
+    }
+    if (searchQuery) {
+      const pattern = `%${escapeLikePattern(searchQuery.toLowerCase())}%`;
+      whereParts.push(
+        "(LOWER(question) LIKE ? ESCAPE '\\' OR LOWER(COALESCE(description, '')) LIKE ? ESCAPE '\\')"
+      );
+      whereBindings.push(pattern, pattern);
     }
 
     const whereSql = whereParts.length > 0 ? `WHERE ${whereParts.join(" AND ")}` : "";
@@ -417,6 +441,7 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
           pageSize,
           sort,
           category,
+          searchQuery,
           includeRejected,
           sourcePath: "d1:curated_feed",
           scoreFormula: hasFrontPageScore ? "front_page_score_v1" : "legacy_civic_plus_newsworthiness",
