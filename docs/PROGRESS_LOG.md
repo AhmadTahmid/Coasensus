@@ -212,3 +212,12 @@
 100. Production Gemini activation blocker identified:
    - `wrangler secret list --env production` shows only `COASENSUS_ADMIN_REFRESH_TOKEN`
    - missing `COASENSUS_LLM_API_KEY` in production means `llmEnabled=false` at runtime and classification falls back to heuristic.
+101. User added production `COASENSUS_LLM_API_KEY`; reran production validation with forced fresh prompt version:
+   - production prompt set to `v1-gemini-004-prodcheck`
+   - refresh metrics: `llmAttempts=8`, `llmEvaluated=8`, `llmFailures=0`, `heuristicEvaluated=792`
+   - telemetry confirms Gemini success rate `1.0`
+102. Production semantic + feed health confirmed:
+   - `GET /api/admin/semantic-metrics` => `200` with Gemini success data
+   - `GET /api/feed?sort=score` => healthy (`front_page_score_v1`, non-zero scores)
+103. Added production error observability path for future provider issues:
+   - `llmErrorSamples` now exposed in refresh summary (empty on successful run).

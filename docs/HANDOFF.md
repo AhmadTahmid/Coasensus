@@ -109,13 +109,13 @@ This file is the explicit handoff checkpoint.
    - semantic summary includes `llmErrorSamples` for quick root-cause visibility when provider calls fail
 13. Production rollout status:
    - production DB migrations applied through `0004`
-   - production Worker deployed with Gemini profile (`v1-gemini-003-billing`, cap `8`)
+   - production Worker deployed with Gemini profile (`v1-gemini-004-prodcheck`, cap `8`)
    - production admin refresh + semantic metrics endpoint validated (`200`)
-   - current blocker: production missing `COASENSUS_LLM_API_KEY`, so runtime shows `llmEnabled=false` and uses heuristic fallback
+   - production `COASENSUS_LLM_API_KEY` now set and verified live (`llmEvaluated=8`, `llmFailures=0`)
 14. Pending next milestone:
    - tune semantic thresholds and ranking weights using observed outcomes
    - increase LLM cap gradually if/when provider quota allows
-   - set production `COASENSUS_LLM_API_KEY` and re-run production refresh to confirm Gemini success rate
+   - optionally align staging/production prompt versions after evaluation window
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

@@ -104,7 +104,7 @@
         "COASENSUS_LLM_PROVIDER": "gemini",
         "COASENSUS_LLM_MODEL": "gemini-2.5-flash",
         "COASENSUS_LLM_BASE_URL": "https://generativelanguage.googleapis.com/v1beta",
-        "COASENSUS_LLM_PROMPT_VERSION": "v1-gemini-003-billing",
+        "COASENSUS_LLM_PROMPT_VERSION": "v1-gemini-004-prodcheck",
         "COASENSUS_LLM_MIN_NEWS_SCORE": "55",
         "COASENSUS_LLM_MAX_MARKETS_PER_RUN": "8",
         "COASENSUS_FRONTPAGE_W1": "0.6",
