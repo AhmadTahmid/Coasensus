@@ -349,6 +349,155 @@ body {
   gap: 12px;
 }
 
+.hero-links {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
+.admin-link {
+  color: var(--link);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.admin-link:hover {
+  text-decoration: underline;
+}
+
+.admin-shell {
+  max-width: 1240px;
+}
+
+.admin-hero h1 {
+  font-size: clamp(28px, 4.2vw, 46px);
+}
+
+.admin-controls {
+  grid-template-columns: minmax(220px, 2fr) minmax(220px, 2fr) minmax(120px, 1fr) minmax(120px, 1fr) auto;
+}
+
+.dashboard-status {
+  margin-top: 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #fffaf0;
+}
+
+.status-ok {
+  border-color: #5f8b52;
+  background: #eff7e9;
+  color: #214018;
+}
+
+.status-warn {
+  border-color: #c39f57;
+  background: #fff7e4;
+  color: #624b18;
+}
+
+.status-error {
+  border-color: #b25b56;
+  background: #fff0ef;
+  color: #5e1d1a;
+}
+
+.dashboard-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metric-card {
+  min-height: 140px;
+}
+
+.metric-card h3 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.metric-value {
+  margin-top: 12px;
+  font-family: "Palatino Linotype", "Book Antiqua", "Times New Roman", serif;
+  font-size: clamp(25px, 2.8vw, 34px);
+  line-height: 1.1;
+}
+
+.metric-sub {
+  margin-top: 8px;
+  margin-bottom: 0;
+  color: #4e4538;
+  font-size: 13px;
+}
+
+.panel {
+  margin-top: 12px;
+}
+
+.panel h2 {
+  margin-top: 0;
+  margin-bottom: 4px;
+  font-size: 24px;
+}
+
+.panel-sub {
+  margin-top: 0;
+  color: #4e4538;
+}
+
+.panel-note {
+  margin: 8px 0 10px;
+  font-weight: 600;
+  color: #2a281f;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.diag-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.diag-table th,
+.diag-table td {
+  border-bottom: 1px solid #dfcfb1;
+  text-align: left;
+  padding: 8px 10px;
+  vertical-align: top;
+}
+
+.diag-table th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #4e4538;
+  background: #f8f1df;
+}
+
+.table-empty {
+  margin: 6px 0;
+  color: #5b5449;
+}
+
+.split-panels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.split-panels h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
 @media (max-width: 980px) {
   .story-card {
     grid-column: span 12;
@@ -364,6 +513,14 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .admin-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .hero h1 {
     font-size: clamp(28px, 7vw, 46px);
   }
@@ -371,6 +528,10 @@ body {
 
 @media (max-width: 560px) {
   .controls {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-controls {
     grid-template-columns: 1fr;
   }
 
@@ -384,5 +545,13 @@ body {
 
   .card h3 {
     font-size: 20px;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .split-panels {
+    grid-template-columns: 1fr;
   }
 }

@@ -46,3 +46,8 @@ npm run dev:feed-api
 npm run dev:web
 npm run monitor:prod
 ```
+
+## Admin diagnostics
+- Feed UI: `https://coasensus.com`
+- Read-only diagnostics dashboard: `https://coasensus.com/admin.html`
+- Dashboard uses existing admin endpoints and requires an admin token for protected diagnostics routes.

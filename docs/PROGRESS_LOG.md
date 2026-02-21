@@ -765,3 +765,28 @@
 268. Post-rollout monitor verification:
    - Monitor Production `22254553101` => success.
    - Monitor Staging `22254553099` => success.
+269. Started `MILESTONE-DASHBOARD-012` on branch `agent/dashboard-pass1`.
+270. Added read-only diagnostics dashboard page:
+   - new frontend route asset: `apps/web/public/admin.html`.
+   - dashboard includes panels for health/feed status, semantic telemetry, taxonomy distribution, and decision diagnostics.
+271. Added diagnostics dashboard data client:
+   - new script: `apps/web/public/admin.js`.
+   - fetches existing endpoints only:
+     - `/api/health`
+     - `/api/feed`
+     - `/api/admin/semantic-metrics`
+     - `/api/admin/feed-diagnostics`
+   - applies `X-Admin-Token` for protected admin endpoints.
+272. Added dashboard UI integration:
+   - updated `apps/web/public/styles.css` with dashboard layout/table/status styling.
+   - added feed-page link to diagnostics dashboard in `apps/web/public/index.html`.
+273. Updated docs for dashboard usage:
+   - `apps/web/README.md` now documents `/admin.html` and token behavior.
+   - root `README.md` now references production diagnostics URL.
+274. Milestone bookkeeping synced:
+   - `docs/ROADMAP_QUEUE.md` marks `MILESTONE-DASHBOARD-012` complete.
+   - `docs/POST_V2_BACKLOG.md` moves dashboard milestone to recently completed.
+   - `docs/ISSUE_CHECKLIST.md` adds `QA-013` completed.
+275. Validation:
+   - `node --check apps/web/public/admin.js` => success.
+   - `npm run check` => success after dashboard implementation.

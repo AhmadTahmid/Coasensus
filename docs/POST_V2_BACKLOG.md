@@ -4,17 +4,7 @@ This backlog starts after `MILESTONE-PERF-008` completion and focuses on launch 
 
 ## Active
 
-### `MILESTONE-DASHBOARD-012`
-- Goal: make diagnostics more accessible than raw API responses.
-- Scope:
-  - Create read-only admin dashboard view for key metrics:
-    - feed freshness
-    - semantic success/failure
-    - taxonomy distribution
-    - cache status
-- Acceptance:
-  - Dashboard loads from existing admin endpoints with token auth.
-  - No write actions; diagnostics-only surface.
+- (none)
 
 ## Recently Completed
 
@@ -45,6 +35,18 @@ This backlog starts after `MILESTONE-PERF-008` completion and focuses on launch 
 - Acceptance:
   - Daily snapshots are generated and inspectable.
   - Review records can be attached to launch/no-go decisions.
+
+### `MILESTONE-DASHBOARD-012`
+- Goal: make diagnostics more accessible than raw API responses.
+- Scope:
+  - Create read-only admin dashboard view for key metrics:
+    - feed freshness
+    - semantic success/failure
+    - taxonomy distribution
+    - cache status
+- Acceptance:
+  - Dashboard loads from existing admin endpoints with token auth.
+  - No write actions; diagnostics-only surface.
 
 ## Parking Lot (Promote Only When Needed)
 
