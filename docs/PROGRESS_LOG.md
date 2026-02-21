@@ -706,3 +706,24 @@
      - `.github/workflows/monitor-staging.yml`.
 250. Rationale:
    - keep category-dominance alert active for extreme concentration while avoiding a permanently failing monitor on current real-world feed composition.
+251. Promoted `MILESTONE-CATEGORY-SANITY-010` to `main`:
+   - merged PR `#6` as commit `03a8cc2`.
+252. Post-merge pipeline status (`#6`):
+   - CI run `22254226010` => success.
+   - Deploy Cloudflare run `22254226000`:
+     - first attempt failed at `Deploy Pages` with Cloudflare internal error.
+     - rerun succeeded.
+253. Initial post-merge monitor runs (`#6`):
+   - Monitor Production `22254269127` => failure (`ALERT_CATEGORY_DOMINANCE`, dominant share `0.85` vs threshold `0.65`).
+   - Monitor Staging `22254269115` => success.
+254. Applied threshold tune via PR `#7`:
+   - merged as commit `8bf028e`.
+   - adjusted workflow env `COASENSUS_CATEGORY_DOMINANCE_MAX_SHARE` to `0.90` for production/staging monitor jobs.
+255. Post-merge pipeline status (`#7`):
+   - CI run `22254311784` => success.
+   - Deploy Cloudflare run `22254311772` => success.
+256. Final monitor verification after threshold tune:
+   - Monitor Production `22254357091` => success.
+   - Monitor Staging `22254357097` => success.
+257. Category-dominance check state after tuning:
+   - both successful monitor logs report category-dominance evaluation present with `triggered=false`.

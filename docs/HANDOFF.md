@@ -443,6 +443,23 @@ This file is the explicit handoff checkpoint.
      - `ALERT_CATEGORY_DOMINANCE`
      - dominant share `0.85` (17/20 politics) > initial threshold `0.65`.
    - monitor workflow env thresholds were tuned to `0.90` for both production and staging to avoid persistent red while preserving an extreme-concentration alert.
+107. Category-sanity milestone promotion:
+   - merged PR `#6` to `main` as commit `03a8cc2`.
+108. Post-merge pipeline status (`#6`):
+   - CI `22254226010` success.
+   - Deploy Cloudflare `22254226000` first attempt failed at Pages deploy with Cloudflare internal error; rerun succeeded.
+109. Initial post-merge monitor snapshot (`#6`):
+   - production monitor `22254269127` failed with `ALERT_CATEGORY_DOMINANCE` at threshold `0.65`.
+   - staging monitor `22254269115` succeeded.
+110. Threshold-tune promotion:
+   - merged PR `#7` to `main` as commit `8bf028e`.
+111. Post-merge pipeline status (`#7`):
+   - CI `22254311784` success.
+   - Deploy Cloudflare `22254311772` success.
+112. Final monitor verification after threshold tune:
+   - production monitor `22254357091` success.
+   - staging monitor `22254357097` success.
+   - both runs reported category-dominance checks with `triggered=false`.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
