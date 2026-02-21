@@ -851,3 +851,16 @@
 293. Validation:
    - `npm run check` => success.
    - `npx wrangler deploy --dry-run --config infra/cloudflare/wrangler.api.ci.jsonc --env staging` => success.
+294. Started `MILESTONE-RANKING-TESTS-015` on branch `agent/ranking-tests-pass1`.
+295. Added dedicated ranking regression suite:
+   - new file: `services/ingest-worker/src/ranking-regression.test.ts`.
+   - coverage includes:
+     - deterministic tie-break ordering for `score`, `volume`, `liquidity`, and `endDate` sort modes
+     - null-value ordering behavior (`null` volume/liquidity/endDate)
+     - pagination clamp behavior when requested page exceeds total pages
+     - expanded category query parsing (`tech_ai`, `sports`, `entertainment`).
+296. Hardened feed sorting determinism in `services/ingest-worker/src/feed-store.ts`:
+   - added `id` tie-break fallback across all sort modes.
+   - updated local category set to include `tech_ai`, `sports`, and `entertainment` for query parity.
+297. Validation:
+   - `npm run check` => success (`services/ingest-worker` now runs 20 tests including ranking regression suite).

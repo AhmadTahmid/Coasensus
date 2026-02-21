@@ -565,6 +565,17 @@ This file is the explicit handoff checkpoint.
 143. Local validation status:
    - `npm run check` passed.
    - `npx wrangler deploy --dry-run --config infra/cloudflare/wrangler.api.ci.jsonc --env staging` passed.
+144. Started `MILESTONE-RANKING-TESTS-015` on branch `agent/ranking-tests-pass1`.
+145. Added dedicated ranking regression suite in `services/ingest-worker/src/ranking-regression.test.ts`:
+   - deterministic tie-breaks for equal-score/equal-volume/equal-liquidity/equal-endDate cases
+   - null-metric ordering expectations
+   - page clamp behavior when requested page exceeds total pages
+   - expanded query category parsing coverage (`tech_ai`, `sports`, `entertainment`).
+146. Hardened local feed sorter determinism in `services/ingest-worker/src/feed-store.ts`:
+   - all sort modes now use `id` tie-break fallback
+   - category parser now includes all expanded categories used across the stack.
+147. Validation status for ranking milestone:
+   - `npm run check` passed with new ranking suite included in CI-equivalent run.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

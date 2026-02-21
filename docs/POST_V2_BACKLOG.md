@@ -8,6 +8,16 @@ This backlog starts after `MILESTONE-PERF-008` completion and focuses on launch 
 
 ## Recently Completed
 
+### `MILESTONE-RANKING-TESTS-015`
+- Goal: prevent silent ranking regressions and unstable ordering behavior.
+- Scope:
+  - Add dedicated ranking regression suite for local feed sorting paths.
+  - Lock deterministic tie-break rules for equal-score/equal-metric cases.
+  - Cover edge cases for null metrics and out-of-range pagination.
+- Acceptance:
+  - CI runs ranking tests and fails on ordering regressions.
+  - Sorting behavior is deterministic for ties (`id` fallback).
+
 ### `MILESTONE-SEMANTIC-FAILOVER-013`
 - Goal: keep refresh pipeline resilient when LLM providers degrade temporarily.
 - Scope:
@@ -61,4 +71,3 @@ This backlog starts after `MILESTONE-PERF-008` completion and focuses on launch 
 ## Parking Lot (Promote Only When Needed)
 
 - `MILESTONE-UI-POLISH-014`: masonry layout, richer news card anatomy, optional iconography.
-- `MILESTONE-RANKING-TESTS-015`: dedicated ranking regression/edge-case test suite.
