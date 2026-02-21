@@ -189,6 +189,12 @@ Other supported sorts:
 - `sort=volume`
 - `sort=liquidity`
 - `sort=endDate`
+- `sort=trend` (largest positive `trend_delta` first)
+
+Trend-shift metric:
+- `trend_delta = current_front_page_score - previous_front_page_score` for the same `market_id`
+- if no previous snapshot value exists, `trend_delta = 0`
+- this metric is persisted in `curated_feed.trend_delta` during each refresh run.
 
 ## 11. Topic de-dup and diversity
 

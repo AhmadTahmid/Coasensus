@@ -1,4 +1,4 @@
-export type FeedSort = "score" | "volume" | "liquidity" | "endDate";
+export type FeedSort = "score" | "volume" | "liquidity" | "endDate" | "trend";
 
 export interface FeedRequestOptions {
   page: number;

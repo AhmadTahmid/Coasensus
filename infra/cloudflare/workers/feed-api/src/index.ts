@@ -14,7 +14,7 @@ type MarketCategory =
 
 type GeoTag = "US" | "EU" | "Asia" | "Africa" | "MiddleEast" | "World";
 
-type FeedSort = "score" | "volume" | "liquidity" | "endDate";
+type FeedSort = "score" | "volume" | "liquidity" | "endDate" | "trend";
 
 interface Env {
   DB: D1Database;
@@ -60,6 +60,7 @@ interface CuratedFeedRow {
   civic_score: number;
   newsworthiness_score: number;
   front_page_score?: number | null;
+  trend_delta?: number | null;
   is_curated: number;
   decision_reason: string;
   reason_codes_json: string | null;
@@ -153,6 +154,7 @@ const NON_SCORE_SORT_SQL: Record<Exclude<FeedSort, "score">, string> = {
   volume: "COALESCE(volume, -1) DESC, market_id ASC",
   liquidity: "COALESCE(liquidity, -1) DESC, market_id ASC",
   endDate: "CASE WHEN end_date IS NULL THEN 1 ELSE 0 END ASC, end_date ASC, market_id ASC",
+  trend: "COALESCE(trend_delta, 0) DESC, market_id ASC",
 };
 const SEARCH_QUERY_MAX_CHARS = 120;
 
@@ -189,7 +191,9 @@ function asPositiveInt(value: string | null, fallback: number, min: number, max:
 }
 
 function asFeedSort(value: string | null): FeedSort {
-  return value === "volume" || value === "liquidity" || value === "endDate" || value === "score" ? value : "score";
+  return value === "volume" || value === "liquidity" || value === "endDate" || value === "trend" || value === "score"
+    ? value
+    : "score";
 }
 
 function asCategory(value: string | null): MarketCategory | null {
@@ -279,7 +283,10 @@ async function curatedFeedHasColumn(db: D1Database, columnName: string): Promise
   }
 }
 
-function resolveSortSql(sort: FeedSort, hasFrontPageScore: boolean): string {
+function resolveSortSql(sort: FeedSort, hasFrontPageScore: boolean, hasTrendDelta: boolean): string {
+  if (sort === "trend" && !hasTrendDelta) {
+    sort = "score";
+  }
   if (sort === "score") {
     if (hasFrontPageScore) {
       return "COALESCE(front_page_score, (civic_score + newsworthiness_score)) DESC, market_id ASC";
@@ -370,6 +377,8 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
     const includeRejected = url.searchParams.get("includeRejected") === "1";
     const hasFrontPageScore = await curatedFeedHasColumn(env.DB, "front_page_score");
     const hasGeoTag = await curatedFeedHasColumn(env.DB, "geo_tag");
+    const hasTrendDelta = await curatedFeedHasColumn(env.DB, "trend_delta");
+    const effectiveSort = sort === "trend" && !hasTrendDelta ? "score" : sort;
 
     const whereParts: string[] = [];
     const whereBindings: unknown[] = [];
@@ -393,9 +402,10 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
     }
 
     const whereSql = whereParts.length > 0 ? `WHERE ${whereParts.join(" AND ")}` : "";
-    const orderBySql = resolveSortSql(sort, hasFrontPageScore);
+    const orderBySql = resolveSortSql(effectiveSort, hasFrontPageScore, hasTrendDelta);
     const frontPageSelectSql = hasFrontPageScore ? "front_page_score," : "";
     const geoTagSelectSql = hasGeoTag ? "geo_tag," : "";
+    const trendDeltaSelectSql = hasTrendDelta ? "trend_delta," : "";
 
     let refreshSummary: Awaited<ReturnType<typeof refreshCuratedFeed>> | null = null;
     let refreshError: string | null = null;
@@ -436,6 +446,7 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
         civic_score,
         newsworthiness_score,
         ${frontPageSelectSql}
+        ${trendDeltaSelectSql}
         is_curated,
         decision_reason,
         reason_codes_json,
@@ -474,6 +485,7 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
         reasonCodes: parseReasonCodes(row.reason_codes_json),
       },
       frontPageScore: toNumberOrNull(row.front_page_score),
+      trendDelta: toNumberOrNull(row.trend_delta),
     }));
 
     return json(
@@ -485,7 +497,8 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
           totalPages,
           page: safePage,
           pageSize,
-          sort,
+          sort: effectiveSort,
+          requestedSort: sort,
           category,
           region,
           searchQuery,
@@ -493,6 +506,7 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
           sourcePath: "d1:curated_feed",
           scoreFormula: hasFrontPageScore ? "front_page_score_v1" : "legacy_civic_plus_newsworthiness",
           regionFilterApplied: Boolean(region && hasGeoTag),
+          trendSortAvailable: hasTrendDelta,
           refreshAttempted: refreshSummary !== null || refreshError !== null,
           refreshRunId: refreshSummary?.runId ?? null,
           refreshError,

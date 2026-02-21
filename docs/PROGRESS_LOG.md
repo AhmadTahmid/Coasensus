@@ -469,3 +469,27 @@
 171. Post-rollout monitor verification:
    - production monitor `22252721036` => success (`totalItems=86`, `llmFailures=0`, runId `2026-02-21T07-15-27-694Z`)
    - staging monitor `22252722052` => success (`totalItems=85`, `llmFailures=0`, runId `2026-02-21T07-22-35-107Z`).
+172. Started `MILESTONE-TREND-004` on branch `agent/trend-shift-pass1`.
+173. Added curated-feed trend persistence:
+   - new D1 migration `0006_curated_feed_trend_delta.sql` adds `curated_feed.trend_delta` with descending index.
+   - refresh pipeline now computes per-market trend shift during snapshot replacement:
+     - `trend_delta = current_front_page_score - previous_front_page_score` for same `market_id`
+     - defaults to `0` when no previous score exists.
+174. Added API trend support:
+   - `/api/feed` now supports `sort=trend`.
+   - feed items now include `trendDelta`.
+   - response meta includes `requestedSort` and `trendSortAvailable`.
+175. Added web trend controls and indicator:
+   - sort control now includes `Trending up`.
+   - cards now render trend badge (`Trend ↑`, `Trend ↓`, `Trend ↔`) derived from `trendDelta`.
+176. Shared contract update:
+   - `packages/shared-types` now includes `GeoTag` and optional `trendDelta` on `CuratedFeedItem`.
+177. Validation for trend milestone:
+   - `npm run check` => success
+   - `npx wrangler deploy --dry-run --config infra/cloudflare/wrangler.api.ci.jsonc --env staging` => success.
+178. Staging rollout for trend milestone:
+   - applied migration `0006_curated_feed_trend_delta.sql` to `coasensus-staging`
+   - deployed staging worker version `60ae8bdd-a633-4050-9f79-4a689f53aaec`.
+179. Staging trend smoke checks:
+   - `GET /api/feed?...&sort=trend` => `200`, `sort=trend`, `requestedSort=trend`, `trendSortAvailable=true`
+   - `GET /api/feed?...&sort=trend&region=US` => `200`, region filter and geo tags still valid.
