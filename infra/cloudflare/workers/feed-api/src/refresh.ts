@@ -97,6 +97,9 @@ interface RefreshEnv {
   COASENSUS_LLM_MIN_NEWS_SCORE_SPORTS?: string;
   COASENSUS_LLM_MIN_NEWS_SCORE_ENTERTAINMENT?: string;
   COASENSUS_LLM_MAX_MARKETS_PER_RUN?: string;
+  COASENSUS_LLM_FAILOVER_ENABLED?: string;
+  COASENSUS_LLM_FAILOVER_FAILURE_STREAK?: string;
+  COASENSUS_LLM_FAILOVER_COOLDOWN_RUNS?: string;
   COASENSUS_FRONTPAGE_W1?: string;
   COASENSUS_FRONTPAGE_W2?: string;
   COASENSUS_FRONTPAGE_W3?: string;
@@ -150,6 +153,12 @@ interface TopicDedupConfig {
   maxPerCluster: number;
 }
 
+interface SemanticFailoverConfig {
+  enabled: boolean;
+  failureStreakThreshold: number;
+  cooldownRuns: number;
+}
+
 interface SemanticClassification {
   isMeme: boolean;
   newsworthinessScore: number;
@@ -159,6 +168,22 @@ interface SemanticClassification {
   modelName: string;
   promptVersion: string;
   source: "llm" | "heuristic" | "cache";
+}
+
+interface SemanticFailoverState {
+  consecutiveFailures: number;
+  cooldownRunsRemaining: number;
+  lastTriggeredAt: string | null;
+  lastReason: string | null;
+  updatedAt: string | null;
+}
+
+interface SemanticFailoverStateRow {
+  consecutive_failures: number | null;
+  cooldown_runs_remaining: number | null;
+  last_triggered_at: string | null;
+  last_reason: string | null;
+  updated_at: string | null;
 }
 
 type LlmProvider = "openai" | "gemini";
@@ -190,6 +215,13 @@ interface SemanticEnrichmentResult {
     heuristicEvaluated: number;
     llmFailures: number;
     llmErrorSamples: string[];
+    failoverEnabled: boolean;
+    failoverActive: boolean;
+    failoverTriggered: boolean;
+    failoverFailureStreakThreshold: number;
+    failoverCooldownRunsConfigured: number;
+    failoverConsecutiveFailures: number;
+    failoverCooldownRunsRemaining: number;
   };
 }
 
@@ -221,6 +253,13 @@ export interface RefreshSummary {
     heuristicEvaluated: number;
     llmFailures: number;
     llmErrorSamples: string[];
+    failoverEnabled: boolean;
+    failoverActive: boolean;
+    failoverTriggered: boolean;
+    failoverFailureStreakThreshold: number;
+    failoverCooldownRunsConfigured: number;
+    failoverConsecutiveFailures: number;
+    failoverCooldownRunsRemaining: number;
   };
   metrics: {
     totalMs: number;
@@ -253,6 +292,9 @@ const DEFAULT_LLM_MIN_NEWS_SCORE = 55;
 const DEFAULT_LLM_MIN_NEWS_SCORE_SPORTS = 72;
 const DEFAULT_LLM_MIN_NEWS_SCORE_ENTERTAINMENT = 78;
 const DEFAULT_LLM_MAX_MARKETS_PER_RUN = 150;
+const DEFAULT_LLM_FAILOVER_ENABLED = true;
+const DEFAULT_LLM_FAILOVER_FAILURE_STREAK = 3;
+const DEFAULT_LLM_FAILOVER_COOLDOWN_RUNS = 4;
 const DEFAULT_FRONTPAGE_W1 = 0.6;
 const DEFAULT_FRONTPAGE_W2 = 0.25;
 const DEFAULT_FRONTPAGE_W3 = 0.1;
@@ -261,6 +303,7 @@ const DEFAULT_TOPIC_DEDUP_ENABLED = true;
 const DEFAULT_TOPIC_DEDUP_SIMILARITY = 0.55;
 const DEFAULT_TOPIC_DEDUP_MIN_SHARED_TOKENS = 5;
 const DEFAULT_TOPIC_DEDUP_MAX_PER_CLUSTER = 1;
+const SEMANTIC_FAILOVER_STATE_ID = 1;
 
 const EXCLUSION_TOKENS = [
   "meme",
@@ -400,6 +443,167 @@ function resolveTopicDedupConfig(env: RefreshEnv): TopicDedupConfig {
       20
     ),
   };
+}
+
+function resolveSemanticFailoverConfig(env: RefreshEnv): SemanticFailoverConfig {
+  return {
+    enabled: asBool(env.COASENSUS_LLM_FAILOVER_ENABLED, DEFAULT_LLM_FAILOVER_ENABLED),
+    failureStreakThreshold: asPositiveInt(
+      env.COASENSUS_LLM_FAILOVER_FAILURE_STREAK,
+      DEFAULT_LLM_FAILOVER_FAILURE_STREAK,
+      1,
+      20
+    ),
+    cooldownRuns: asPositiveInt(
+      env.COASENSUS_LLM_FAILOVER_COOLDOWN_RUNS,
+      DEFAULT_LLM_FAILOVER_COOLDOWN_RUNS,
+      1,
+      100
+    ),
+  };
+}
+
+function defaultSemanticFailoverState(): SemanticFailoverState {
+  return {
+    consecutiveFailures: 0,
+    cooldownRunsRemaining: 0,
+    lastTriggeredAt: null,
+    lastReason: null,
+    updatedAt: null,
+  };
+}
+
+async function loadSemanticFailoverState(db: D1Database): Promise<SemanticFailoverState> {
+  try {
+    const row = await db
+      .prepare(
+        `
+        SELECT
+          consecutive_failures,
+          cooldown_runs_remaining,
+          last_triggered_at,
+          last_reason,
+          updated_at
+        FROM semantic_failover_state
+        WHERE id = ?
+      `
+      )
+      .bind(SEMANTIC_FAILOVER_STATE_ID)
+      .first<SemanticFailoverStateRow>();
+
+    if (!row) {
+      return defaultSemanticFailoverState();
+    }
+
+    const consecutive = Number(row.consecutive_failures ?? 0);
+    const cooldown = Number(row.cooldown_runs_remaining ?? 0);
+
+    return {
+      consecutiveFailures: Number.isFinite(consecutive) ? Math.max(0, Math.floor(consecutive)) : 0,
+      cooldownRunsRemaining: Number.isFinite(cooldown) ? Math.max(0, Math.floor(cooldown)) : 0,
+      lastTriggeredAt: row.last_triggered_at ?? null,
+      lastReason: row.last_reason ?? null,
+      updatedAt: row.updated_at ?? null,
+    };
+  } catch (error) {
+    console.warn("Semantic failover state unavailable, defaulting to empty state", error);
+    return defaultSemanticFailoverState();
+  }
+}
+
+async function persistSemanticFailoverState(db: D1Database, state: SemanticFailoverState): Promise<void> {
+  const nowIso = new Date().toISOString();
+  try {
+    await db
+      .prepare(
+        `
+        INSERT INTO semantic_failover_state (
+          id,
+          consecutive_failures,
+          cooldown_runs_remaining,
+          last_triggered_at,
+          last_reason,
+          updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          consecutive_failures = excluded.consecutive_failures,
+          cooldown_runs_remaining = excluded.cooldown_runs_remaining,
+          last_triggered_at = excluded.last_triggered_at,
+          last_reason = excluded.last_reason,
+          updated_at = excluded.updated_at
+      `
+      )
+      .bind(
+        SEMANTIC_FAILOVER_STATE_ID,
+        Math.max(0, Math.floor(state.consecutiveFailures)),
+        Math.max(0, Math.floor(state.cooldownRunsRemaining)),
+        state.lastTriggeredAt,
+        state.lastReason,
+        nowIso
+      )
+      .run();
+  } catch (error) {
+    console.warn("Failed to persist semantic failover state", error);
+  }
+}
+
+function computeNextSemanticFailoverState(args: {
+  previousState: SemanticFailoverState;
+  config: SemanticFailoverConfig;
+  llmConfigured: boolean;
+  llmAttempts: number;
+  llmFailures: number;
+  failoverActiveAtRunStart: boolean;
+}): { state: SemanticFailoverState; triggered: boolean } {
+  const nowIso = new Date().toISOString();
+  const next: SemanticFailoverState = {
+    consecutiveFailures: Math.max(0, args.previousState.consecutiveFailures),
+    cooldownRunsRemaining: Math.max(0, args.previousState.cooldownRunsRemaining),
+    lastTriggeredAt: args.previousState.lastTriggeredAt,
+    lastReason: args.previousState.lastReason,
+    updatedAt: nowIso,
+  };
+
+  if (!args.config.enabled) {
+    next.consecutiveFailures = 0;
+    next.cooldownRunsRemaining = 0;
+    next.lastReason = "failover_disabled";
+    return { state: next, triggered: false };
+  }
+
+  if (args.failoverActiveAtRunStart) {
+    next.consecutiveFailures = 0;
+    next.cooldownRunsRemaining = Math.max(0, next.cooldownRunsRemaining - 1);
+    next.lastReason = next.cooldownRunsRemaining > 0 ? "failover_cooldown_active" : "failover_cooldown_complete";
+    return { state: next, triggered: false };
+  }
+
+  if (!args.llmConfigured) {
+    next.lastReason = "llm_not_configured";
+    return { state: next, triggered: false };
+  }
+
+  if (args.llmAttempts <= 0) {
+    next.lastReason = "no_llm_attempts";
+    return { state: next, triggered: false };
+  }
+
+  if (args.llmFailures > 0) {
+    next.consecutiveFailures += 1;
+    next.lastReason = "llm_failure_observed";
+    if (next.consecutiveFailures >= args.config.failureStreakThreshold) {
+      next.consecutiveFailures = 0;
+      next.cooldownRunsRemaining = args.config.cooldownRuns;
+      next.lastTriggeredAt = nowIso;
+      next.lastReason = "failover_triggered_consecutive_failures";
+      return { state: next, triggered: true };
+    }
+    return { state: next, triggered: false };
+  }
+
+  next.consecutiveFailures = 0;
+  next.lastReason = "llm_healthy";
+  return { state: next, triggered: false };
 }
 
 function normalizeTopicToken(raw: string): string {
@@ -1326,12 +1530,18 @@ async function enrichMarketsWithSemanticCache(env: RefreshEnv, markets: Market[]
   const llmProvider = resolveLlmProvider(env);
   const llmModel = resolveLlmModel(env, llmProvider);
   const llmConfigured = asBool(env.COASENSUS_LLM_ENABLED, false) && Boolean(env.COASENSUS_LLM_API_KEY?.trim());
+  const failoverConfig = resolveSemanticFailoverConfig(env);
+  const previousFailoverState = failoverConfig.enabled
+    ? await loadSemanticFailoverState(env.DB)
+    : defaultSemanticFailoverState();
+  const failoverActive = failoverConfig.enabled && llmConfigured && previousFailoverState.cooldownRunsRemaining > 0;
   const maxLlmMarkets = asPositiveInt(
     env.COASENSUS_LLM_MAX_MARKETS_PER_RUN,
     DEFAULT_LLM_MAX_MARKETS_PER_RUN,
     0,
     2000
   );
+  const maxLlmMarketsEffective = failoverActive ? 0 : maxLlmMarkets;
 
   const byMarketId = new Map<string, SemanticClassification>();
   const cacheRows = await loadSemanticCache(
@@ -1393,7 +1603,7 @@ async function enrichMarketsWithSemanticCache(env: RefreshEnv, markets: Market[]
   for (const candidate of llmQueue) {
     let classification: SemanticClassification;
 
-    if (llmConfigured && llmAttempts < maxLlmMarkets) {
+    if (llmConfigured && llmAttempts < maxLlmMarketsEffective) {
       llmAttempts += 1;
       try {
         classification = await classifyMarketSemantic(env, candidate.market, promptVersion);
@@ -1427,6 +1637,17 @@ async function enrichMarketsWithSemanticCache(env: RefreshEnv, markets: Market[]
   }
 
   await upsertSemanticCache(env.DB, rowsToUpsert);
+  const failoverUpdate = computeNextSemanticFailoverState({
+    previousState: previousFailoverState,
+    config: failoverConfig,
+    llmConfigured,
+    llmAttempts,
+    llmFailures,
+    failoverActiveAtRunStart: failoverActive,
+  });
+  if (failoverConfig.enabled) {
+    await persistSemanticFailoverState(env.DB, failoverUpdate.state);
+  }
 
   return {
     byMarketId,
@@ -1442,6 +1663,13 @@ async function enrichMarketsWithSemanticCache(env: RefreshEnv, markets: Market[]
       heuristicEvaluated,
       llmFailures,
       llmErrorSamples,
+      failoverEnabled: failoverConfig.enabled,
+      failoverActive,
+      failoverTriggered: failoverUpdate.triggered,
+      failoverFailureStreakThreshold: failoverConfig.failureStreakThreshold,
+      failoverCooldownRunsConfigured: failoverConfig.cooldownRuns,
+      failoverConsecutiveFailures: failoverUpdate.state.consecutiveFailures,
+      failoverCooldownRunsRemaining: failoverUpdate.state.cooldownRunsRemaining,
     },
   };
 }

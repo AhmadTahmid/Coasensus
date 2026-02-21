@@ -534,6 +534,25 @@ This file is the explicit handoff checkpoint.
    - Editorial Spotcheck `22254731284` success.
    - Monitor Production `22254729697` success.
    - Monitor Staging `22254729796` success.
+135. Started `MILESTONE-SEMANTIC-FAILOVER-013` on branch `agent/semantic-failover-pass1`.
+136. Added semantic failover persistence:
+   - new D1 migration `infra/db/migrations/0007_semantic_failover_state.sql`
+   - table `semantic_failover_state` tracks:
+     - `consecutive_failures`
+     - `cooldown_runs_remaining`
+     - trigger/reason timestamps for auditability.
+137. Refresh pipeline failover behavior implemented in `infra/cloudflare/workers/feed-api/src/refresh.ts`:
+   - added env controls:
+     - `COASENSUS_LLM_FAILOVER_ENABLED`
+     - `COASENSUS_LLM_FAILOVER_FAILURE_STREAK`
+     - `COASENSUS_LLM_FAILOVER_COOLDOWN_RUNS`
+   - on consecutive LLM-failure runs, pipeline enters temporary heuristic-only cooldown and then auto-resumes LLM attempts.
+138. Semantic telemetry endpoint enhancement:
+   - `GET /api/admin/semantic-metrics` now includes `failoverState` when migration `0007` is present.
+   - endpoint remains backward-compatible if `0007` has not yet been applied.
+139. Config/docs parity updates:
+   - added failover vars to `infra/cloudflare/wrangler.api.jsonc` and `infra/cloudflare/wrangler.api.ci.jsonc` (root + staging + production).
+   - updated worker readme failover section in `infra/cloudflare/workers/feed-api/README.md`.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

@@ -8,6 +8,16 @@ This backlog starts after `MILESTONE-PERF-008` completion and focuses on launch 
 
 ## Recently Completed
 
+### `MILESTONE-SEMANTIC-FAILOVER-013`
+- Goal: keep refresh pipeline resilient when LLM providers degrade temporarily.
+- Scope:
+  - Add D1-backed failover state for semantic classification runs.
+  - Trigger temporary heuristic-only mode after configurable consecutive LLM-failure runs.
+  - Expose failover state in admin semantic telemetry for visibility.
+- Acceptance:
+  - Repeated failure runs automatically suppress LLM attempts for a cooldown window.
+  - Semantic telemetry remains available and shows failover state (`active`, streak/cooldown counters).
+
 ### `MILESTONE-LAUNCH-STABILITY-009`
 - Goal: make launch readiness measurable from automation, not manual guesswork.
 - Scope:
@@ -50,6 +60,5 @@ This backlog starts after `MILESTONE-PERF-008` completion and focuses on launch 
 
 ## Parking Lot (Promote Only When Needed)
 
-- `MILESTONE-SEMANTIC-FAILOVER-013`: automatic temporary heuristic fallback on consecutive LLM failures.
 - `MILESTONE-UI-POLISH-014`: masonry layout, richer news card anatomy, optional iconography.
 - `MILESTONE-RANKING-TESTS-015`: dedicated ranking regression/edge-case test suite.

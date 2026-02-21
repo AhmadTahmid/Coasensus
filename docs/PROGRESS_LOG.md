@@ -801,3 +801,33 @@
    - Editorial Spotcheck `22254731284` => success.
    - Monitor Production `22254729697` => success.
    - Monitor Staging `22254729796` => success.
+280. Started `MILESTONE-SEMANTIC-FAILOVER-013` on branch `agent/semantic-failover-pass1`.
+281. Added migration `infra/db/migrations/0007_semantic_failover_state.sql`:
+   - introduces `semantic_failover_state` with single-row operational state (`id=1`) for consecutive-failure and cooldown counters.
+282. Added semantic failover controls in Worker refresh pipeline (`infra/cloudflare/workers/feed-api/src/refresh.ts`):
+   - `COASENSUS_LLM_FAILOVER_ENABLED` (default `1`)
+   - `COASENSUS_LLM_FAILOVER_FAILURE_STREAK` (default `3`)
+   - `COASENSUS_LLM_FAILOVER_COOLDOWN_RUNS` (default `4`)
+   - LLM attempts auto-suspend during cooldown and resume automatically after cooldown run budget is exhausted.
+283. Added resilient failover state persistence:
+   - refresh reads/writes `semantic_failover_state` each run (best-effort).
+   - if migration `0007` is missing, refresh logs warning and continues without failover state persistence.
+284. Extended semantic telemetry endpoint (`/api/admin/semantic-metrics`) to include `failoverState`:
+   - `consecutiveFailures`
+   - `cooldownRunsRemaining`
+   - `active`
+   - `lastTriggeredAt`
+   - `lastReason`
+   - `updatedAt`
+285. Kept telemetry backward-compatible:
+   - endpoint now catches missing-table errors for `semantic_failover_state` so legacy environments still receive run/aggregate telemetry.
+286. Config parity updates for deployment safety:
+   - added failover vars to both Cloudflare configs:
+     - `infra/cloudflare/wrangler.api.jsonc`
+     - `infra/cloudflare/wrangler.api.ci.jsonc`
+287. Documentation + queue sync:
+   - worker runtime docs updated: `infra/cloudflare/workers/feed-api/README.md`
+   - backlog/queue/checklist synced:
+     - `docs/POST_V2_BACKLOG.md`
+     - `docs/ROADMAP_QUEUE.md`
+     - `docs/ISSUE_CHECKLIST.md`.
