@@ -31,4 +31,5 @@ jobs:
           COASENSUS_BASE_URL: "https://staging.coasensus.com"
           COASENSUS_ADMIN_TOKEN: ${{ secrets.COASENSUS_ADMIN_REFRESH_TOKEN_STAGING }}
           COASENSUS_MAX_STALE_MINUTES: "90"
+          COASENSUS_SEMANTIC_FAILURE_STREAK: "3"
         run: node scripts/monitor-production.mjs

@@ -3,6 +3,7 @@
 const baseUrl = (process.env.COASENSUS_BASE_URL || "https://coasensus.com").replace(/\/+$/, "");
 const adminToken = process.env.COASENSUS_ADMIN_TOKEN || "";
 const maxStaleMinutes = Number(process.env.COASENSUS_MAX_STALE_MINUTES || "90");
+const semanticFailureStreak = Number.parseInt(process.env.COASENSUS_SEMANTIC_FAILURE_STREAK || "3", 10);
 
 function toError(message, detail, context) {
   const error = new Error(message);
@@ -59,16 +60,33 @@ function ensure(condition, message, detail) {
   }
 }
 
+function alertMessage(code, message) {
+  return `[${code}] ${message}`;
+}
+
+function semanticRunSummary(run) {
+  return {
+    runId: run?.runId ?? null,
+    fetchedAt: run?.fetchedAt ?? null,
+    llmEnabled: Boolean(run?.llmEnabled),
+    llmAttempts: Number(run?.llmAttempts ?? 0),
+    llmFailures: Number(run?.llmFailures ?? 0),
+    llmSuccessRate: run?.llmSuccessRate ?? null,
+  };
+}
+
 async function main() {
   const checkedAt = new Date().toISOString();
   let step = "validate-env";
   const healthUrl = `${baseUrl}/api/health`;
   const feedUrl = `${baseUrl}/api/feed?page=1&pageSize=1&sort=score`;
-  const metricsUrl = `${baseUrl}/api/admin/semantic-metrics?limit=1`;
+  const metricsLimit = Math.max(semanticFailureStreak, 1);
+  const metricsUrl = `${baseUrl}/api/admin/semantic-metrics?limit=${metricsLimit}`;
 
   try {
     ensure(adminToken.trim().length > 0, "Missing COASENSUS_ADMIN_TOKEN for telemetry check");
     ensure(Number.isFinite(maxStaleMinutes) && maxStaleMinutes > 0, "Invalid COASENSUS_MAX_STALE_MINUTES");
+    ensure(Number.isInteger(semanticFailureStreak) && semanticFailureStreak > 0, "Invalid COASENSUS_SEMANTIC_FAILURE_STREAK");
 
     step = "check-health";
     const health = await fetchJson(healthUrl);
@@ -77,8 +95,16 @@ async function main() {
     step = "check-feed";
     const feed = await fetchJson(feedUrl);
     const totalItems = Number(feed?.meta?.totalItems ?? 0);
-    ensure(totalItems > 0, "Feed totalItems is zero", feed?.meta ?? feed);
-    ensure(Array.isArray(feed?.items) && feed.items.length > 0, "Feed returned no items", feed?.meta ?? feed);
+    ensure(
+      totalItems > 0,
+      alertMessage("ALERT_EMPTY_FEED", "Feed totalItems is zero"),
+      feed?.meta ?? feed
+    );
+    ensure(
+      Array.isArray(feed?.items) && feed.items.length > 0,
+      alertMessage("ALERT_EMPTY_FEED", "Feed returned no items"),
+      feed?.meta ?? feed
+    );
 
     step = "check-semantic-metrics";
     const telemetry = await fetchJson(metricsUrl, {
@@ -86,7 +112,8 @@ async function main() {
         "X-Admin-Token": adminToken,
       },
     });
-    const latest = Array.isArray(telemetry?.runs) ? telemetry.runs[0] : null;
+    const runs = Array.isArray(telemetry?.runs) ? telemetry.runs : [];
+    const latest = runs[0] ?? null;
     ensure(latest, "No semantic telemetry runs found", telemetry);
 
     step = "check-staleness";
@@ -96,8 +123,32 @@ async function main() {
     const staleMinutes = (Date.now() - fetchedAtMs) / 60000;
     ensure(
       staleMinutes <= maxStaleMinutes,
-      `Feed refresh is stale: ${staleMinutes.toFixed(1)} min > ${maxStaleMinutes} min`,
+      alertMessage(
+        "ALERT_STALE_FEED",
+        `Feed refresh is stale: ${staleMinutes.toFixed(1)} min > ${maxStaleMinutes} min`
+      ),
       latest
+    );
+
+    step = "check-semantic-failure-streak";
+    const semanticWindow = runs.slice(0, semanticFailureStreak);
+    const semanticWindowSummaries = semanticWindow.map(semanticRunSummary);
+    const semanticWindowReady =
+      semanticWindow.length === semanticFailureStreak &&
+      semanticWindow.every((run) => run?.llmEnabled === true && Number(run?.llmAttempts ?? 0) > 0);
+    const semanticFailureStreakTriggered =
+      semanticWindowReady && semanticWindow.every((run) => Number(run?.llmFailures ?? 0) > 0);
+
+    ensure(
+      !semanticFailureStreakTriggered,
+      alertMessage(
+        "ALERT_SEMANTIC_FAILURE_STREAK",
+        `llmFailures > 0 for ${semanticFailureStreak} consecutive runs`
+      ),
+      {
+        semanticFailureStreak,
+        semanticWindow: semanticWindowSummaries,
+      }
     );
 
     const report = {
@@ -105,6 +156,7 @@ async function main() {
       checkedAt,
       baseUrl,
       maxStaleMinutes,
+      semanticFailureStreak,
       staleMinutes: Number(staleMinutes.toFixed(2)),
       endpoints: {
         healthUrl,
@@ -125,6 +177,19 @@ async function main() {
         llmSuccessRate: latest.llmSuccessRate,
         totalMs: latest.totalMs,
       },
+      alerts: {
+        staleFeed: {
+          thresholdMinutes: maxStaleMinutes,
+          triggered: false,
+        },
+        semanticFailureStreak: {
+          thresholdRuns: semanticFailureStreak,
+          windowSize: semanticWindow.length,
+          windowReady: semanticWindowReady,
+          triggered: semanticFailureStreakTriggered,
+          window: semanticWindowSummaries,
+        },
+      },
     };
 
     console.log(JSON.stringify(report, null, 2));
@@ -134,6 +199,7 @@ async function main() {
         checkedAt,
         baseUrl,
         maxStaleMinutes,
+        semanticFailureStreak,
         step,
         ...(error.context || {}),
       };
@@ -148,6 +214,7 @@ main().catch((error) => {
     checkedAt: new Date().toISOString(),
     baseUrl,
     maxStaleMinutes,
+    semanticFailureStreak,
     message: error?.message || String(error),
     detail: error?.detail ?? null,
     context: error?.context ?? null,

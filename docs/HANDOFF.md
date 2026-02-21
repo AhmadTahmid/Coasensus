@@ -287,6 +287,18 @@ This file is the explicit handoff checkpoint.
    - staging monitor `22252905034` success.
 59. Next recommended milestone:
    - implement `MILESTONE-ALERT-005` (alerting for stale feed / repeated semantic failures).
+60. Alert milestone implementation (`MILESTONE-ALERT-005`) completed on `agent/alerting-pass1`:
+   - monitor script now emits explicit alert-coded failures:
+     - `[ALERT_EMPTY_FEED]` when feed returns zero items
+     - `[ALERT_STALE_FEED]` when latest telemetry age exceeds threshold
+     - `[ALERT_SEMANTIC_FAILURE_STREAK]` when `llmFailures > 0` across configured consecutive runs
+   - added `COASENSUS_SEMANTIC_FAILURE_STREAK` env var (default `3`) and dynamic telemetry window fetch.
+61. Monitor workflow updates:
+   - `.github/workflows/monitor-production.yml` and `.github/workflows/monitor-staging.yml` now set:
+     - `COASENSUS_SEMANTIC_FAILURE_STREAK=3`
+   - existing stale threshold remains `COASENSUS_MAX_STALE_MINUTES=90`.
+62. Next recommended milestone:
+   - implement `MILESTONE-RATE-006` (per-session rate-limited analytics sampling).
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
