@@ -403,6 +403,20 @@ This file is the explicit handoff checkpoint.
    - `npm run check` passed.
    - local script success-path validated with short-window env overrides.
    - note: strict 24h window currently reports `overallReady=false` due historical failure/gaps, which is expected until the next clean stability window.
+96. Launch-stability milestone promotion:
+   - merged PR `#5` to `main` as commit `a58c7ad`.
+97. Post-merge pipeline status:
+   - CI `22254044518` success.
+   - Deploy Cloudflare `22254044521` success.
+98. Manual monitor verification on `main`:
+   - production monitor `22254064611` success.
+   - staging monitor `22254064637` success.
+   - monitor checks confirm `/api/admin/semantic-metrics` returned success responses in both environments.
+99. Launch Stability execution snapshot:
+   - manual run `22254064721` executed and returned `overallReady=false` (expected strict gate behavior on historical data).
+   - production reasons: run-count floor miss, 1 historical failure, empty-hour gaps, max-gap breach.
+   - staging reasons: 1 historical failure, empty-hour gaps, max-gap breach.
+   - artifact bundle uploaded: `launch-stability-22254064721` (`launch-status.json`, `launch-status.md`).
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

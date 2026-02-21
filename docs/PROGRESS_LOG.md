@@ -654,3 +654,26 @@
    - `npm run check` => success.
    - local strict 24h run intentionally returned non-ready due historical monitor gap/failure data (expected gate behavior).
    - local short-window override run returned `overallReady=true`, validating success path and artifact generation.
+235. Promoted launch-stability milestone to `main`:
+   - merged PR `#5` as commit `a58c7ad`.
+236. Post-merge pipeline status:
+   - CI run `22254044518` => success.
+   - Deploy Cloudflare run `22254044521` => success.
+237. Manual monitor verification on `main`:
+   - Monitor Production run `22254064611` => success.
+   - Monitor Staging run `22254064637` => success.
+238. Monitor telemetry confirmation:
+   - both manual monitor runs completed semantic telemetry checks successfully (`/api/admin/semantic-metrics` returned successful responses with run data).
+239. Manual Launch Stability verification:
+   - Launch Stability run `22254064721` => failure by design because strict 24h gate currently evaluates `overallReady=false`.
+   - production blockers in artifact:
+     - `run_count_below_min (46 < 80)`
+     - `failures_exceeded (1 > 0)`
+     - `empty_hours_exceeded (9 > 0)`
+     - `max_gap_exceeded (409.09 > 40 minutes)`.
+   - staging blockers in artifact:
+     - `failures_exceeded (1 > 0)`
+     - `empty_hours_exceeded (10 > 0)`
+     - `max_gap_exceeded (455.64 > 70 minutes)`.
+240. Launch Stability artifact captured:
+   - run artifact `launch-stability-22254064721` contains `launch-status.json` and `launch-status.md` for gate diagnostics.
