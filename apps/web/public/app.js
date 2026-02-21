@@ -3,6 +3,7 @@ const state = {
   pageSize: 20,
   sort: "score",
   category: "",
+  region: "",
   search: "",
   includeRejected: false,
   totalPages: 1,
@@ -42,6 +43,7 @@ const el = {
   search: document.getElementById("search"),
   sort: document.getElementById("sort"),
   category: document.getElementById("category"),
+  region: document.getElementById("region"),
   includeRejected: document.getElementById("includeRejected"),
   refresh: document.getElementById("refresh"),
   prev: document.getElementById("prev"),
@@ -123,6 +125,12 @@ function titleCaseCategory(category) {
     .join(" ");
 }
 
+function formatGeoTag(value) {
+  const tag = String(value || "World");
+  if (tag === "MiddleEast") return "Middle East";
+  return tag;
+}
+
 function resolveFrontPageScore(item) {
   const frontPageScore = toNumber(item.frontPageScore);
   if (frontPageScore !== null) {
@@ -169,6 +177,9 @@ function feedUrl() {
   if (state.category) {
     params.set("category", state.category);
   }
+  if (state.region) {
+    params.set("region", state.region);
+  }
   if (state.search) {
     params.set("q", state.search);
   }
@@ -184,6 +195,7 @@ function renderMeta(meta) {
     `Total items: ${meta.totalItems}`,
     `Sort: ${meta.sort}`,
     `Category: ${meta.category || "all"}`,
+    `Region: ${formatGeoTag(meta.region || "all")}`,
     `Search: ${meta.searchQuery || "none"}`,
     `Page size: ${meta.pageSize}`,
   ];
@@ -201,6 +213,7 @@ function renderCards(items) {
 
   const renderCard = (item, isLead = false) => {
     const badgeCategory = titleCaseCategory(item.score?.category);
+    const badgeRegion = formatGeoTag(item.geoTag);
     const frontPageScore = fmtScore(resolveFrontPageScore(item));
     const decision = formatDecisionReason(item.decisionReason);
     const deck = truncateDescription(item.description);
@@ -212,6 +225,7 @@ function renderCards(items) {
           <div class="badge-row">
             ${isLead ? `<span class="lead-kicker">Front Page Lead</span>` : ""}
             <span class="badge">${badgeCategory}</span>
+            <span class="badge region-badge">${badgeRegion}</span>
             ${item.isCurated ? "" : `<span class="badge rejected">Rejected</span>`}
           </div>
           <span class="score-pill">Front Page ${frontPageScore}</span>
@@ -230,6 +244,7 @@ function renderCards(items) {
             data-market-id="${item.id}"
             data-market-question="${encodeURIComponent(item.question)}"
             data-market-category="${item.score?.category || "other"}"
+            data-market-region="${item.geoTag || "World"}"
             href="${item.url}"
             target="_blank"
             rel="noreferrer"
@@ -255,6 +270,7 @@ function syncControls() {
   el.search.value = state.search;
   el.sort.value = state.sort;
   el.category.value = state.category;
+  el.region.value = state.region;
   el.includeRejected.checked = state.includeRejected;
   el.prev.disabled = state.page <= 1;
   el.next.disabled = state.page >= state.totalPages;
@@ -282,6 +298,7 @@ async function loadFeed() {
       pageSize: state.pageSize,
       sort: state.sort,
       category: state.category || "all",
+      region: state.region || "all",
       search: state.search || "none",
       includeRejected: state.includeRejected,
       totalItems: data.meta?.totalItems ?? 0,
@@ -336,6 +353,13 @@ el.category.addEventListener("change", () => {
   void loadFeed();
 });
 
+el.region.addEventListener("change", () => {
+  state.page = 1;
+  state.region = el.region.value;
+  track("region_changed", { region: state.region || "all" });
+  void loadFeed();
+});
+
 el.includeRejected.addEventListener("change", () => {
   state.page = 1;
   state.includeRejected = el.includeRejected.checked;
@@ -369,6 +393,7 @@ el.feed.addEventListener("click", (event) => {
   track("market_clicked", {
     marketId: link.dataset.marketId || "",
     category: link.dataset.marketCategory || "other",
+    region: link.dataset.marketRegion || "World",
     question: decodeURIComponent(link.dataset.marketQuestion || ""),
   });
 });

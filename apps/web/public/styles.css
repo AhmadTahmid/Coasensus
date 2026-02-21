@@ -84,7 +84,7 @@ body {
 .controls {
   margin-top: 18px;
   display: grid;
-  grid-template-columns: minmax(240px, 2fr) repeat(3, minmax(0, 1fr)) auto;
+  grid-template-columns: minmax(240px, 2fr) repeat(4, minmax(0, 1fr)) auto;
   gap: 12px;
 }
 
@@ -240,6 +240,10 @@ body {
 
 .badge.rejected {
   background: #8d251f;
+}
+
+.badge.region-badge {
+  background: #4b4f58;
 }
 
 .score-pill {

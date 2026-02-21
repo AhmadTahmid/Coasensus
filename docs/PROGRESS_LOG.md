@@ -436,3 +436,23 @@
      - production `22239978136`
      - staging `22239979666`
    - semantic-metrics endpoint checks remained healthy in both monitor runs.
+162. Started `MILESTONE-REGION-003` on branch `agent/region-filter-pass1`.
+163. Added curated-feed region persistence:
+   - new D1 migration `0005_curated_feed_geo_tag.sql` adds `curated_feed.geo_tag` with index.
+   - refresh pipeline now carries semantic `geoTag` through curation and writes it to `curated_feed` when column is present.
+164. Added API region support:
+   - `GET /api/feed` now accepts `region` (alias `geoTag`), normalized to `US|EU|Asia|Africa|MiddleEast|World`.
+   - feed items now return `geoTag`.
+   - response meta now includes `region` and `regionFilterApplied`.
+165. Added web region controls:
+   - new region select in feed controls (`All, US, EU, Asia, Africa, Middle East, World`).
+   - UI sends `region` query parameter and renders region badge on cards.
+   - analytics now captures `region_changed`, feed load region state, and clicked-card region.
+166. Query builder updates:
+   - `apps/web/src/query.ts` now supports `region` parameter.
+   - tests updated to assert `region=US` inclusion.
+167. Local validation status in this sandbox:
+   - `npm.cmd run typecheck` => success
+   - `npm.cmd run lint` => success
+   - `npm.cmd run check` blocked at test stage due sandbox process spawn restrictions (`vitest` `spawn EPERM`).
+   - local `wrangler` dry-run/deploy not executable in this sandbox because npm registry access is blocked for fetching `wrangler`.
