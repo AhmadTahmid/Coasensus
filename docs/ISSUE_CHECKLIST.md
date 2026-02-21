@@ -49,6 +49,7 @@
 - [x] `QA-009` Add cached feed query path for burst traffic on `/api/feed`
 - [x] `QA-010` Add automated 24h launch-stability readiness checker for monitor workflows
 - [x] `QA-011` Add top-N category dominance diagnostics + monitor alert signal
+- [x] `QA-012` Add daily editorial top-20 snapshot workflow and reviewer decision log path
 
 ## EPIC-06 Hybrid Semantic Layer (Execution Plan V2)
 - [x] `SEM-001` Add phase-1 bouncer prefilter (query + local gates)

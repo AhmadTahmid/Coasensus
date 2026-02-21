@@ -50,4 +50,5 @@ This document defines go/no-go criteria for public launch decisions.
    - `https://coasensus.com`
    - `https://staging.coasensus.com`
 4. Run `Launch Stability` workflow (`.github/workflows/launch-stability.yml`) and verify `overallReady=true` for the 24h window.
-5. Log launch decision + timestamp + responsible owner in `docs/PROGRESS_LOG.md`.
+5. Confirm latest Editorial Spotcheck artifact exists and is reviewed in `docs/EDITORIAL_REVIEW_LOG.md`.
+6. Log launch decision + timestamp + responsible owner in `docs/PROGRESS_LOG.md`.

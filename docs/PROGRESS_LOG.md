@@ -727,3 +727,28 @@
    - Monitor Staging `22254357097` => success.
 257. Category-dominance check state after tuning:
    - both successful monitor logs report category-dominance evaluation present with `triggered=false`.
+258. Started `MILESTONE-EDITORIAL-SPOTCHECK-011` on branch `agent/editorial-spotcheck-pass1`.
+259. Added editorial snapshot script:
+   - `scripts/editorial-spotcheck.mjs` captures top-N score-sorted feed cards (default 20) from production and staging.
+   - writes inspectable artifacts:
+     - `artifacts/editorial-spotcheck.json`
+     - `artifacts/editorial-spotcheck.md`.
+260. Added daily Editorial Spotcheck workflow:
+   - `.github/workflows/editorial-spotcheck.yml`
+   - runs daily at `11 13 * * *` UTC and supports manual dispatch.
+   - uploads snapshot artifacts even on partial failure (`if: always()`).
+261. Added reviewer log path:
+   - created `docs/EDITORIAL_REVIEW_LOG.md` with structured entry format:
+     - reviewer
+     - reviewed timestamp (UTC)
+     - snapshot run id
+     - decision
+     - notes.
+262. Launch gate update:
+   - `docs/LAUNCH_GATES.md` now requires confirming latest editorial snapshot + reviewer entry before launch sign-off.
+263. Milestone bookkeeping synced:
+   - `docs/ROADMAP_QUEUE.md` marks `MILESTONE-EDITORIAL-SPOTCHECK-011` complete and promotes `MILESTONE-DASHBOARD-012`.
+   - `docs/ISSUE_CHECKLIST.md` adds `QA-012` completed.
+   - `docs/POST_V2_BACKLOG.md` moves editorial spotcheck into recently completed.
+264. Validation:
+   - `npm run check` => success after editorial spotcheck implementation.

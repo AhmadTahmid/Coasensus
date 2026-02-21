@@ -1,0 +1,39 @@
+name: Editorial Spotcheck
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "11 13 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Generate Editorial Snapshot
+        env:
+          COASENSUS_EDITORIAL_TOP_N: "20"
+          COASENSUS_EDITORIAL_SORT: "score"
+          COASENSUS_EDITORIAL_PRODUCTION_URL: "https://coasensus.com"
+          COASENSUS_EDITORIAL_STAGING_URL: "https://staging.coasensus.com"
+          COASENSUS_EDITORIAL_INCLUDE_STAGING: "1"
+          COASENSUS_EDITORIAL_REQUIRE_STAGING: "0"
+        run: node scripts/editorial-spotcheck.mjs
+
+      - name: Upload Editorial Snapshot Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: editorial-spotcheck-${{ github.run_id }}
+          path: artifacts/editorial-spotcheck.*
+          if-no-files-found: error

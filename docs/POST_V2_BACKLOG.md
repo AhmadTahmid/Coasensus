@@ -4,17 +4,6 @@ This backlog starts after `MILESTONE-PERF-008` completion and focuses on launch 
 
 ## Active
 
-### `MILESTONE-EDITORIAL-SPOTCHECK-011`
-- Goal: reduce manual friction for editorial review.
-- Scope:
-  - Snapshot top-20 feed cards on cadence.
-  - Add simple reviewer log path (who reviewed, timestamp, notes).
-- Acceptance:
-  - Daily snapshots are generated and inspectable.
-  - Review records can be attached to launch/no-go decisions.
-
-## Next
-
 ### `MILESTONE-DASHBOARD-012`
 - Goal: make diagnostics more accessible than raw API responses.
 - Scope:
@@ -47,6 +36,15 @@ This backlog starts after `MILESTONE-PERF-008` completion and focuses on launch 
 - Acceptance:
   - Diagnostics expose composition ratios for top-N cards.
   - Alert signal appears in monitor output with clear reason code.
+
+### `MILESTONE-EDITORIAL-SPOTCHECK-011`
+- Goal: reduce manual friction for editorial review.
+- Scope:
+  - Snapshot top-20 feed cards on cadence.
+  - Add simple reviewer log path (who reviewed, timestamp, notes).
+- Acceptance:
+  - Daily snapshots are generated and inspectable.
+  - Review records can be attached to launch/no-go decisions.
 
 ## Parking Lot (Promote Only When Needed)
 
