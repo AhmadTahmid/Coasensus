@@ -481,6 +481,19 @@ This file is the explicit handoff checkpoint.
    - `docs/ISSUE_CHECKLIST.md` adds `QA-012` completed.
 119. Validation (local):
    - `npm run check` passed after editorial spotcheck implementation.
+120. Editorial-spotcheck milestone promotion:
+   - merged PR `#8` to `main` as commit `ba2efaf`.
+121. Post-merge pipeline status:
+   - CI `22254484458` success.
+   - Deploy Cloudflare `22254484445` success.
+122. Manual Editorial Spotcheck verification:
+   - workflow run `22254553098` success.
+   - snapshot artifact uploaded (`editorial-spotcheck-22254553098`) with:
+     - `editorial-spotcheck.json`
+     - `editorial-spotcheck.md`.
+123. Post-rollout monitor confirmation:
+   - production monitor `22254553101` success.
+   - staging monitor `22254553099` success.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
