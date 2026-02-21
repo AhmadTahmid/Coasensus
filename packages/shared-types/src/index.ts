@@ -17,6 +17,7 @@ export interface Market {
   question: string;
   description: string | null;
   url: string;
+  probability?: number | null;
   endDate: string | null;
   liquidity: number | null;
   volume: number | null;

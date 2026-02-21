@@ -56,6 +56,7 @@ interface CuratedFeedRow {
   question: string;
   description: string | null;
   url: string;
+  probability?: number | null;
   end_date: string | null;
   liquidity: number | null;
   volume: number | null;
@@ -493,6 +494,7 @@ async function handleFeed(request: Request, url: URL, env: Env, origin: string, 
     const hasFrontPageScore = await curatedFeedHasColumn(env.DB, "front_page_score");
     const hasGeoTag = await curatedFeedHasColumn(env.DB, "geo_tag");
     const hasTrendDelta = await curatedFeedHasColumn(env.DB, "trend_delta");
+    const hasProbability = await curatedFeedHasColumn(env.DB, "probability");
     const effectiveSort = sort === "trend" && !hasTrendDelta ? "score" : sort;
 
     const whereParts: string[] = [];
@@ -521,6 +523,7 @@ async function handleFeed(request: Request, url: URL, env: Env, origin: string, 
     const frontPageSelectSql = hasFrontPageScore ? "front_page_score," : "";
     const geoTagSelectSql = hasGeoTag ? "geo_tag," : "";
     const trendDeltaSelectSql = hasTrendDelta ? "trend_delta," : "";
+    const probabilitySelectSql = hasProbability ? "probability," : "";
 
     let refreshSummary: Awaited<ReturnType<typeof refreshCuratedFeed>> | null = null;
     let refreshError: string | null = null;
@@ -552,6 +555,7 @@ async function handleFeed(request: Request, url: URL, env: Env, origin: string, 
         question,
         description,
         url,
+        ${probabilitySelectSql}
         end_date,
         liquidity,
         volume,
@@ -583,6 +587,7 @@ async function handleFeed(request: Request, url: URL, env: Env, origin: string, 
       question: row.question,
       description: row.description,
       url: row.url,
+      probability: toNumberOrNull(row.probability),
       endDate: row.end_date,
       liquidity: toNumberOrNull(row.liquidity),
       volume: toNumberOrNull(row.volume),

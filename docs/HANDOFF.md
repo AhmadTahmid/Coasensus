@@ -553,6 +553,18 @@ This file is the explicit handoff checkpoint.
 139. Config/docs parity updates:
    - added failover vars to `infra/cloudflare/wrangler.api.jsonc` and `infra/cloudflare/wrangler.api.ci.jsonc` (root + staging + production).
    - updated worker readme failover section in `infra/cloudflare/workers/feed-api/README.md`.
+140. Odds + link hardening patch:
+   - added `probability` support from Polymarket raw payload to normalized market shape.
+   - feed cards now show bold `Odds / Price` values.
+   - card links now enforce Polymarket domain with fallback `https://polymarket.com/market/<id>`.
+141. D1 schema update for odds persistence:
+   - added migration `infra/db/migrations/0008_curated_feed_probability.sql` (`curated_feed.probability`).
+142. API/refresh updates for odds field:
+   - refresh snapshot writer persists `probability` when available.
+   - `/api/feed` now returns `probability` for each item with backward-compatible column checks.
+143. Local validation status:
+   - `npm run check` passed.
+   - `npx wrangler deploy --dry-run --config infra/cloudflare/wrangler.api.ci.jsonc --env staging` passed.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
