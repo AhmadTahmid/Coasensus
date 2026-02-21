@@ -299,6 +299,12 @@ This file is the explicit handoff checkpoint.
    - existing stale threshold remains `COASENSUS_MAX_STALE_MINUTES=90`.
 62. Next recommended milestone:
    - implement `MILESTONE-RATE-006` (per-session rate-limited analytics sampling).
+63. Alert milestone promotion complete:
+   - merged as `80da77b` (PR `#1`)
+   - CI `22253096764` + Deploy Cloudflare `22253096757` succeeded on `main`.
+64. Post-merge monitor confirmation:
+   - production monitor `22253101327` success
+   - staging monitor `22253101546` success.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

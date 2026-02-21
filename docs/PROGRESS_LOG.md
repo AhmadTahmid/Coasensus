@@ -517,3 +517,13 @@
 186. Milestone bookkeeping updated:
    - `docs/ROADMAP_QUEUE.md` marks `MILESTONE-ALERT-005` complete and promotes `MILESTONE-RATE-006` to active.
    - `docs/ISSUE_CHECKLIST.md` adds `QA-006` as completed (`explicit monitor alerts for stale feed + semantic failure streaks`).
+187. Promoted alert milestone to `main`:
+   - merged PR `#1` as commit `80da77b`.
+188. Post-merge pipeline status:
+   - CI run `22253096764` => success
+   - Deploy Cloudflare run `22253096757` => success.
+189. Post-merge monitor verification on `main`:
+   - production monitor `22253101327` => success
+   - staging monitor `22253101546` => success.
+190. Monitor output verification from workflow logs:
+   - reports now include `semanticFailureStreak`, `alerts.semanticFailureStreak`, and explicit alert-ready telemetry window data in both environments.
