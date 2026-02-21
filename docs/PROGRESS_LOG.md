@@ -864,3 +864,18 @@
    - updated local category set to include `tech_ai`, `sports`, and `entertainment` for query parity.
 297. Validation:
    - `npm run check` => success (`services/ingest-worker` now runs 20 tests including ranking regression suite).
+298. Started `MILESTONE-UI-POLISH-014` on branch `agent/ui-polish-pass1`.
+299. Implemented feed UI polish in `apps/web/public/app.js`:
+   - added safer HTML escaping for dynamic card/meta text and normalized trend labels.
+   - expanded card anatomy with signal stack, market ribbon metadata pills, and reason-code chips.
+   - preserved bold odds/price display and canonical Polymarket link resolution.
+300. Added matching visual system in `apps/web/public/styles.css`:
+   - masonry-style secondary feed column layout with responsive single-column fallback.
+   - signal-band styling (`high`/`medium`/`watch`/`neutral`), mini-icon treatments, and reason-chip styling.
+   - staggered card entrance animation with reduced-motion accessibility fallback.
+301. Documentation + validation sync:
+   - updated milestone trackers:
+     - `docs/ROADMAP_QUEUE.md`
+     - `docs/POST_V2_BACKLOG.md`.
+   - `node --check apps/web/public/app.js` => success.
+   - `npm run check` => success.
