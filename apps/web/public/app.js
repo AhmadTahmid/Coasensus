@@ -298,6 +298,69 @@ function fmtDate(value) {
   return date.toLocaleDateString();
 }
 
+function fmtDateTime(value) {
+  if (!value) return "n/a";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "n/a";
+  return date.toLocaleString();
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function shortMarketId(value) {
+  const id = String(value || "").trim();
+  if (id.length <= 10) return id || "n/a";
+  return `${id.slice(0, 6)}...${id.slice(-4)}`;
+}
+
+function timeToEndLabel(value) {
+  if (!value) return "No end date";
+  const end = new Date(value).getTime();
+  if (!Number.isFinite(end)) return "No end date";
+  const deltaMs = end - Date.now();
+  if (deltaMs <= 0) return "Closed";
+  const dayMs = 24 * 60 * 60 * 1000;
+  const hourMs = 60 * 60 * 1000;
+  const days = Math.floor(deltaMs / dayMs);
+  if (days >= 1) {
+    return `${days}d left`;
+  }
+  const hours = Math.max(1, Math.floor(deltaMs / hourMs));
+  return `${hours}h left`;
+}
+
+function scoreBand(value) {
+  const numeric = toNumber(value);
+  if (numeric === null) return { label: "Signal n/a", className: "signal-neutral" };
+  if (numeric >= 5) return { label: "Signal high", className: "signal-high" };
+  if (numeric >= 3) return { label: "Signal medium", className: "signal-medium" };
+  return { label: "Signal watch", className: "signal-watch" };
+}
+
+function normalizeReasonCode(code) {
+  const raw = String(code || "").trim();
+  if (!raw) return "";
+  return raw.replace(/^semantic_/, "").replace(/^geo_/, "region_").replace(/[_-]+/g, " ");
+}
+
+function renderReasonCodeChips(reasonCodes) {
+  if (!Array.isArray(reasonCodes) || reasonCodes.length === 0) return "";
+  const chips = reasonCodes
+    .map((code) => normalizeReasonCode(code))
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((code) => `<span class="reason-chip">${escapeHtml(code)}</span>`)
+    .join("");
+  return chips ? `<div class="reason-strip">${chips}</div>` : "";
+}
+
 function normalizeProbability(value) {
   const num = toNumber(value);
   if (num === null) return null;
@@ -332,9 +395,9 @@ function resolvePolymarketLink(rawUrl, marketId) {
 function formatTrendDelta(value) {
   const num = toNumber(value);
   if (num === null) return { label: "Trend n/a", className: "flat" };
-  if (num > 0) return { label: `Trend ↑ +${num.toFixed(2)}`, className: "up" };
-  if (num < 0) return { label: `Trend ↓ ${num.toFixed(2)}`, className: "down" };
-  return { label: "Trend ↔ 0.00", className: "flat" };
+  if (num > 0) return { label: `Trend up +${num.toFixed(2)}`, className: "up" };
+  if (num < 0) return { label: `Trend down ${num.toFixed(2)}`, className: "down" };
+  return { label: "Trend flat 0.00", className: "flat" };
 }
 
 function titleCaseCategory(category) {
@@ -418,7 +481,7 @@ function renderMeta(meta) {
     `Search: ${meta.searchQuery || "none"}`,
     `Page size: ${meta.pageSize}`,
   ];
-  el.meta.innerHTML = chips.map((item) => `<span class="chip">${item}</span>`).join("");
+  el.meta.innerHTML = chips.map((item) => `<span class="chip">${escapeHtml(item)}</span>`).join("");
 }
 
 function renderCards(items) {
@@ -430,49 +493,64 @@ function renderCards(items) {
 
   const [leadItem, ...remainingItems] = safeItems;
 
-  const renderCard = (item, isLead = false) => {
+  const renderCard = (item, index, isLead = false) => {
     const badgeCategory = titleCaseCategory(item.score?.category);
     const badgeRegion = formatGeoTag(item.geoTag);
     const frontPageScore = fmtScore(resolveFrontPageScore(item));
+    const signal = scoreBand(frontPageScore);
     const trend = formatTrendDelta(item.trendDelta);
     const decision = formatDecisionReason(item.decisionReason);
     const deck = truncateDescription(item.description);
     const titleTag = isLead ? "h2" : "h3";
     const oddsPrice = fmtProbabilityPrice(item.probability);
     const marketLink = resolvePolymarketLink(item.url, item.id);
+    const reasonStrip = renderReasonCodeChips(item.score?.reasonCodes);
+    const endLabel = timeToEndLabel(item.endDate);
+    const updatedLabel = fmtDateTime(item.updatedAt);
+    const marketIdLabel = shortMarketId(item.id);
+    const delayMs = isLead ? 20 : 60 + index * 38;
 
     return `
-      <article class="card ${isLead ? "lead-card" : "story-card"}">
+      <article class="card ${isLead ? "lead-card" : "story-card"} ${signal.className}" style="--stagger:${delayMs}ms">
         <div class="top">
           <div class="badge-row">
             ${isLead ? `<span class="lead-kicker">Front Page Lead</span>` : ""}
-            <span class="badge">${badgeCategory}</span>
-            <span class="badge region-badge">${badgeRegion}</span>
-            <span class="badge trend-badge ${trend.className}">${trend.label}</span>
+            <span class="badge category-badge"><span class="mini-icon icon-category"></span>${escapeHtml(badgeCategory)}</span>
+            <span class="badge region-badge"><span class="mini-icon icon-region"></span>${escapeHtml(badgeRegion)}</span>
+            <span class="badge trend-badge ${trend.className}"><span class="mini-icon icon-trend"></span>${escapeHtml(trend.label)}</span>
             ${item.isCurated ? "" : `<span class="badge rejected">Rejected</span>`}
           </div>
-          <span class="odds-pill"><strong>Odds / Price ${oddsPrice}</strong></span>
-          <span class="score-pill">Front Page ${frontPageScore}</span>
+          <div class="signal-stack">
+            <span class="odds-pill"><strong>${escapeHtml(oddsPrice)}</strong><small>Odds / Price</small></span>
+            <span class="score-pill"><span>Front Page</span><strong>${escapeHtml(frontPageScore)}</strong></span>
+          </div>
         </div>
-        <${titleTag}>${item.question}</${titleTag}>
-        ${deck ? `<p class="deck">${deck}</p>` : ""}
+        <${titleTag}>${escapeHtml(item.question)}</${titleTag}>
+        ${deck ? `<p class="deck">${escapeHtml(deck)}</p>` : ""}
+        <div class="market-ribbon">
+          <span class="info-pill"><span class="mini-icon icon-id"></span> ID ${escapeHtml(marketIdLabel)}</span>
+          <span class="info-pill"><span class="mini-icon icon-time"></span> ${escapeHtml(endLabel)}</span>
+          <span class="info-pill"><span class="mini-icon icon-updated"></span> Updated ${escapeHtml(updatedLabel)}</span>
+          <span class="info-pill signal-pill ${signal.className}">${escapeHtml(signal.label)}</span>
+        </div>
         <div class="stats">
           <span><strong>Volume:</strong> ${fmtNum(item.volume)}</span>
           <span><strong>Liquidity:</strong> ${fmtNum(item.liquidity)}</span>
           <span><strong>Ends:</strong> ${fmtDate(item.endDate)}</span>
         </div>
-        <p class="decision"><strong>Decision:</strong> ${decision}</p>
+        ${reasonStrip}
+        <p class="decision"><strong>Decision:</strong> ${escapeHtml(decision)}</p>
         <div class="actions">
           <a
             class="market-link"
-            data-market-id="${item.id}"
+            data-market-id="${escapeHtml(item.id)}"
             data-market-question="${encodeURIComponent(item.question)}"
-            data-market-category="${item.score?.category || "other"}"
-            data-market-region="${item.geoTag || "World"}"
+            data-market-category="${escapeHtml(item.score?.category || "other")}"
+            data-market-region="${escapeHtml(item.geoTag || "World")}"
             href="${marketLink}"
             target="_blank"
             rel="noreferrer"
-          >Open on Polymarket</a>
+          ><span class="mini-icon icon-link"></span>Open on Polymarket</a>
         </div>
       </article>
     `;
@@ -480,10 +558,10 @@ function renderCards(items) {
 
   const gridMarkup =
     remainingItems.length > 0
-      ? `<div class="feed-grid">${remainingItems.map((item) => renderCard(item, false)).join("")}</div>`
+      ? `<div class="feed-grid">${remainingItems.map((item, index) => renderCard(item, index + 1, false)).join("")}</div>`
       : "";
 
-  el.feed.innerHTML = `${renderCard(leadItem, true)}${gridMarkup}`;
+  el.feed.innerHTML = `${renderCard(leadItem, 0, true)}${gridMarkup}`;
 }
 
 function setStatus(message) {

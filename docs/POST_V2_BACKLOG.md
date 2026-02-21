@@ -8,6 +8,16 @@ This backlog starts after `MILESTONE-PERF-008` completion and focuses on launch 
 
 ## Recently Completed
 
+### `MILESTONE-UI-POLISH-014`
+- Goal: improve feed readability/scannability with stronger visual hierarchy.
+- Scope:
+  - Add masonry-style card flow for secondary stories.
+  - Add richer card anatomy: signal stack, market ribbon, reason-code chips, compact iconography.
+  - Preserve canonical Polymarket link behavior and bold odds/price emphasis.
+- Acceptance:
+  - Lead card remains prominent while secondary cards render in masonry columns on desktop.
+  - Card metadata and decision signals are easier to scan without reducing feed density.
+
 ### `MILESTONE-RANKING-TESTS-015`
 - Goal: prevent silent ranking regressions and unstable ordering behavior.
 - Scope:
@@ -70,4 +80,4 @@ This backlog starts after `MILESTONE-PERF-008` completion and focuses on launch 
 
 ## Parking Lot (Promote Only When Needed)
 
-- `MILESTONE-UI-POLISH-014`: masonry layout, richer news card anatomy, optional iconography.
+- (none)

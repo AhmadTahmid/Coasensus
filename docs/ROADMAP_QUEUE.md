@@ -24,6 +24,7 @@ Lightweight tracker to keep momentum high while preserving deferred work.
 - [x] `MILESTONE-DASHBOARD-012` Add lightweight admin diagnostics dashboard view (read-only).
 - [x] `MILESTONE-SEMANTIC-FAILOVER-013` Add temporary heuristic-only cooldown after consecutive LLM failure runs.
 - [x] `MILESTONE-RANKING-TESTS-015` Add dedicated ranking regression/edge-case test suite.
+- [x] `MILESTONE-UI-POLISH-014` Add masonry feed layout + richer news-card anatomy/iconography polish.
 
 ## Next
 
