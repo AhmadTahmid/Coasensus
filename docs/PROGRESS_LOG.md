@@ -503,3 +503,17 @@
 182. Post-rollout monitors for trend milestone:
    - production monitor `22252904455` => success (`totalItems=86`, `llmFailures=0`, runId `2026-02-21T07-30-28-219Z`)
    - staging monitor `22252905034` => success (`totalItems=85`, `llmFailures=0`, runId `2026-02-21T07-30-27-972Z`).
+183. Started `MILESTONE-ALERT-005` on branch `agent/alerting-pass1`.
+184. Upgraded monitor alerting logic in `scripts/monitor-production.mjs`:
+   - added explicit alert codes in failure messages:
+     - `[ALERT_EMPTY_FEED]`
+     - `[ALERT_STALE_FEED]`
+     - `[ALERT_SEMANTIC_FAILURE_STREAK]`
+   - added configurable `COASENSUS_SEMANTIC_FAILURE_STREAK` (default `3`), and telemetry query now fetches a matching run window.
+   - semantic streak alert triggers when latest N runs all have `llmEnabled=true`, `llmAttempts>0`, and `llmFailures>0`.
+185. Updated monitor workflow env configuration:
+   - `.github/workflows/monitor-production.yml` now sets `COASENSUS_SEMANTIC_FAILURE_STREAK=3`.
+   - `.github/workflows/monitor-staging.yml` now sets `COASENSUS_SEMANTIC_FAILURE_STREAK=3`.
+186. Milestone bookkeeping updated:
+   - `docs/ROADMAP_QUEUE.md` marks `MILESTONE-ALERT-005` complete and promotes `MILESTONE-RATE-006` to active.
+   - `docs/ISSUE_CHECKLIST.md` adds `QA-006` as completed (`explicit monitor alerts for stale feed + semantic failure streaks`).

@@ -14,11 +14,11 @@ Lightweight tracker to keep momentum high while preserving deferred work.
 - [x] `MILESTONE-UI-SEARCH-002` Add text search (question/description) on API + web controls.
 - [x] `MILESTONE-REGION-003` Add region filter controls and expose geo tag in UI.
 - [x] `MILESTONE-TREND-004` Add trending-shift metric (delta vs previous refresh) and card indicator.
-- [ ] `MILESTONE-ALERT-005` Add explicit alerts for repeated semantic failures and stale feed.
+- [x] `MILESTONE-ALERT-005` Add explicit alerts for repeated semantic failures and stale feed.
+- [ ] `MILESTONE-RATE-006` Add per-session rate-limited analytics sampling to reduce noisy events.
 
 ## Next
 
-- [ ] `MILESTONE-RATE-006` Add per-session rate-limited analytics sampling to reduce noisy events.
 - [ ] `MILESTONE-TAXONOMY-007` Add explicit region/category distribution panel to admin diagnostics.
 
 ## Later
