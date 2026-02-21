@@ -338,6 +338,12 @@ This file is the explicit handoff checkpoint.
    - `npm run check` passed after taxonomy diagnostics expansion.
 74. Next recommended milestone:
    - implement `MILESTONE-PERF-008` (cached feed query path for high-traffic read bursts).
+75. Taxonomy milestone promotion complete:
+   - merged as `66aad5c` (PR `#3`)
+   - CI `22253351976` + Deploy Cloudflare `22253351988` succeeded on `main`.
+76. Post-merge monitor confirmation:
+   - production monitor `22253372672` success
+   - staging monitor `22253372673` success.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

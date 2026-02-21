@@ -568,3 +568,11 @@
    - `docs/ISSUE_CHECKLIST.md` adds `QA-008` completed.
 205. Validation:
    - `npm run check` => success after taxonomy diagnostics implementation.
+206. Promoted taxonomy milestone to `main`:
+   - merged PR `#3` as commit `66aad5c`.
+207. Post-merge pipeline status:
+   - CI run `22253351976` => success
+   - Deploy Cloudflare run `22253351988` => success.
+208. Post-merge monitor verification on `main`:
+   - production monitor `22253372672` => success
+   - staging monitor `22253372673` => success.
