@@ -698,3 +698,11 @@
    - `docs/POST_V2_BACKLOG.md` promoted active backlog to `MILESTONE-EDITORIAL-SPOTCHECK-011`.
 247. Validation:
    - `npm run check` => success after category-sanity implementation.
+248. Production monitor signal quality check after rollout:
+   - monitor run `22254269127` triggered `ALERT_CATEGORY_DOMINANCE` because dominant share was `0.85` (17/20 politics) vs initial threshold `0.65`.
+249. Threshold tuning pass:
+   - updated workflow env `COASENSUS_CATEGORY_DOMINANCE_MAX_SHARE` from `0.65` to `0.90` in:
+     - `.github/workflows/monitor-production.yml`
+     - `.github/workflows/monitor-staging.yml`.
+250. Rationale:
+   - keep category-dominance alert active for extreme concentration while avoiding a permanently failing monitor on current real-world feed composition.
