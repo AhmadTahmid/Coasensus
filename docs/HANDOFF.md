@@ -494,6 +494,35 @@ This file is the explicit handoff checkpoint.
 123. Post-rollout monitor confirmation:
    - production monitor `22254553101` success.
    - staging monitor `22254553099` success.
+124. Started `MILESTONE-DASHBOARD-012` on branch `agent/dashboard-pass1`.
+125. Added read-only admin dashboard page:
+   - new route file: `apps/web/public/admin.html`.
+   - dashboard presents operational cards/panels for:
+     - service health + feed size
+     - semantic telemetry runs/aggregates
+     - taxonomy composition
+     - top-decision diagnostics.
+126. Added dashboard client logic:
+   - new script: `apps/web/public/admin.js`.
+   - reads existing endpoints only:
+     - `/api/health`
+     - `/api/feed`
+     - `/api/admin/semantic-metrics`
+     - `/api/admin/feed-diagnostics`
+   - supports admin token input (`X-Admin-Token`) for protected admin APIs.
+127. Added dashboard styling and navigation:
+   - extended `apps/web/public/styles.css` with diagnostics table/panel styles.
+   - added feed-page link to admin dashboard in `apps/web/public/index.html`.
+128. Added dashboard docs:
+   - `apps/web/README.md` now includes `/admin.html` usage + endpoint/token behavior.
+   - root `README.md` now includes production diagnostics URL.
+129. Milestone bookkeeping updates:
+   - `docs/ROADMAP_QUEUE.md` marks `MILESTONE-DASHBOARD-012` complete.
+   - `docs/POST_V2_BACKLOG.md` moves `MILESTONE-DASHBOARD-012` into recently completed.
+   - `docs/ISSUE_CHECKLIST.md` adds `QA-013` completed.
+130. Validation (local):
+   - `node --check apps/web/public/admin.js` passed.
+   - `npm run check` passed after dashboard implementation.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

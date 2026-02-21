@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Coasensus Admin Diagnostics</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="shell admin-shell">
+      <header class="hero admin-hero">
+        <p class="eyebrow">Coasensus Admin</p>
+        <h1>Read-only diagnostics dashboard.</h1>
+        <p class="sub">
+          This view reads existing API diagnostics endpoints. It does not write data and requires an admin token for
+          protected routes.
+        </p>
+        <p class="hero-links">
+          <a class="admin-link" href="/">Back to Feed</a>
+        </p>
+      </header>
+
+      <section class="controls admin-controls">
+        <label>
+          <span>API Base</span>
+          <input id="apiBase" type="text" placeholder="https://coasensus.com/api" />
+        </label>
+        <label>
+          <span>Admin Token</span>
+          <input id="adminToken" type="password" placeholder="Paste X-Admin-Token value" />
+        </label>
+        <label>
+          <span>Semantic Limit</span>
+          <input id="semanticLimit" type="number" min="1" max="200" value="20" />
+        </label>
+        <label>
+          <span>Top N</span>
+          <input id="topN" type="number" min="1" max="100" value="20" />
+        </label>
+        <button id="refresh" class="button">Refresh Diagnostics</button>
+      </section>
+
+      <section id="status" class="status"></section>
+
+      <section class="dashboard-grid">
+        <article class="card metric-card">
+          <h3>Service</h3>
+          <div id="serviceHealth" class="metric-value">n/a</div>
+          <p id="serviceMeta" class="metric-sub">Waiting for refresh.</p>
+        </article>
+
+        <article class="card metric-card">
+          <h3>Feed Size</h3>
+          <div id="feedTotal" class="metric-value">n/a</div>
+          <p id="feedMeta" class="metric-sub">Top card snapshot pending.</p>
+        </article>
+
+        <article class="card metric-card">
+          <h3>Latest Refresh</h3>
+          <div id="latestRunAt" class="metric-value">n/a</div>
+          <p id="latestRunMeta" class="metric-sub">Semantic run pending.</p>
+        </article>
+
+        <article class="card metric-card">
+          <h3>LLM Success</h3>
+          <div id="llmSuccess" class="metric-value">n/a</div>
+          <p id="llmMeta" class="metric-sub">Needs semantic telemetry.</p>
+        </article>
+      </section>
+
+      <section class="card panel">
+        <h2>Top-N Composition</h2>
+        <p class="panel-sub">Dominant category and top-card category mix from feed diagnostics.</p>
+        <div id="compositionStatus" class="panel-note">No diagnostics loaded yet.</div>
+        <div id="compositionTable"></div>
+      </section>
+
+      <section class="card panel">
+        <h2>Semantic Runs</h2>
+        <p class="panel-sub">Recent refresh runs and LLM attempt outcomes.</p>
+        <div id="semanticRunsTable"></div>
+      </section>
+
+      <section class="card panel">
+        <h2>Semantic Aggregates</h2>
+        <p class="panel-sub">Prompt/model aggregate success and cache behavior.</p>
+        <div id="semanticAggTable"></div>
+      </section>
+
+      <section class="card panel">
+        <h2>Taxonomy Distribution</h2>
+        <p class="panel-sub">Category and region totals from feed diagnostics.</p>
+        <div class="split-panels">
+          <div>
+            <h3>By Category</h3>
+            <div id="categoryTable"></div>
+          </div>
+          <div>
+            <h3>By Region</h3>
+            <div id="regionTable"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card panel">
+        <h2>Decision Signals</h2>
+        <p class="panel-sub">Top decision reasons and reason codes in curated feed.</p>
+        <div class="split-panels">
+          <div>
+            <h3>Decision Reasons</h3>
+            <div id="decisionTable"></div>
+          </div>
+          <div>
+            <h3>Reason Codes</h3>
+            <div id="reasonCodeTable"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script src="/admin.js" defer></script>
+  </body>
+</html>
