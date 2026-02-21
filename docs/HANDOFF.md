@@ -417,6 +417,27 @@ This file is the explicit handoff checkpoint.
    - production reasons: run-count floor miss, 1 historical failure, empty-hour gaps, max-gap breach.
    - staging reasons: 1 historical failure, empty-hour gaps, max-gap breach.
    - artifact bundle uploaded: `launch-stability-22254064721` (`launch-status.json`, `launch-status.md`).
+100. Started `MILESTONE-CATEGORY-SANITY-010` on branch `agent/category-sanity-pass1`.
+101. Added top-N category composition metrics to admin diagnostics:
+   - `GET /api/admin/feed-diagnostics?topN=20` now returns `topPageComposition` with:
+     - `topNRequested`
+     - `topNEvaluated`
+     - per-category `shareOfTopN`
+     - `dominantCategory`
+     - score formula metadata.
+102. Added monitor category-dominance alerting:
+   - `scripts/monitor-production.mjs` now queries `/api/admin/feed-diagnostics` and evaluates top-page concentration.
+   - new alert code: `ALERT_CATEGORY_DOMINANCE`.
+   - configurable env vars:
+     - `COASENSUS_CATEGORY_DOMINANCE_TOP_N`
+     - `COASENSUS_CATEGORY_DOMINANCE_MAX_SHARE`.
+103. Workflow wiring updated:
+   - `.github/workflows/monitor-production.yml` and `.github/workflows/monitor-staging.yml` now pass category-dominance env vars.
+104. Validation (local):
+   - `npm run check` passed after category-sanity implementation.
+105. Queue/checklist updates:
+   - `docs/ROADMAP_QUEUE.md` marks `MILESTONE-CATEGORY-SANITY-010` complete and promotes `MILESTONE-EDITORIAL-SPOTCHECK-011`.
+   - `docs/ISSUE_CHECKLIST.md` adds `QA-011` completed.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

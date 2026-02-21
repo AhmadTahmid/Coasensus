@@ -4,6 +4,8 @@ const baseUrl = (process.env.COASENSUS_BASE_URL || "https://coasensus.com").repl
 const adminToken = process.env.COASENSUS_ADMIN_TOKEN || "";
 const maxStaleMinutes = Number(process.env.COASENSUS_MAX_STALE_MINUTES || "90");
 const semanticFailureStreak = Number.parseInt(process.env.COASENSUS_SEMANTIC_FAILURE_STREAK || "3", 10);
+const categoryDominanceTopN = Number.parseInt(process.env.COASENSUS_CATEGORY_DOMINANCE_TOP_N || "20", 10);
+const categoryDominanceMaxShare = Number(process.env.COASENSUS_CATEGORY_DOMINANCE_MAX_SHARE || "0.65");
 
 function toError(message, detail, context) {
   const error = new Error(message);
@@ -75,6 +77,14 @@ function semanticRunSummary(run) {
   };
 }
 
+function categoryCompositionSummary(entry) {
+  return {
+    category: entry?.category ?? null,
+    count: Number(entry?.count ?? 0),
+    shareOfTopN: entry?.shareOfTopN ?? null,
+  };
+}
+
 async function main() {
   const checkedAt = new Date().toISOString();
   let step = "validate-env";
@@ -82,11 +92,17 @@ async function main() {
   const feedUrl = `${baseUrl}/api/feed?page=1&pageSize=1&sort=score`;
   const metricsLimit = Math.max(semanticFailureStreak, 1);
   const metricsUrl = `${baseUrl}/api/admin/semantic-metrics?limit=${metricsLimit}`;
+  const diagnosticsUrl = `${baseUrl}/api/admin/feed-diagnostics?topN=${Math.max(categoryDominanceTopN, 1)}`;
 
   try {
     ensure(adminToken.trim().length > 0, "Missing COASENSUS_ADMIN_TOKEN for telemetry check");
     ensure(Number.isFinite(maxStaleMinutes) && maxStaleMinutes > 0, "Invalid COASENSUS_MAX_STALE_MINUTES");
     ensure(Number.isInteger(semanticFailureStreak) && semanticFailureStreak > 0, "Invalid COASENSUS_SEMANTIC_FAILURE_STREAK");
+    ensure(Number.isInteger(categoryDominanceTopN) && categoryDominanceTopN > 0, "Invalid COASENSUS_CATEGORY_DOMINANCE_TOP_N");
+    ensure(
+      Number.isFinite(categoryDominanceMaxShare) && categoryDominanceMaxShare > 0 && categoryDominanceMaxShare <= 1,
+      "Invalid COASENSUS_CATEGORY_DOMINANCE_MAX_SHARE"
+    );
 
     step = "check-health";
     const health = await fetchJson(healthUrl);
@@ -151,17 +167,53 @@ async function main() {
       }
     );
 
+    step = "check-feed-diagnostics";
+    const diagnostics = await fetchJson(diagnosticsUrl, {
+      headers: {
+        "X-Admin-Token": adminToken,
+      },
+    });
+    const topPageComposition = diagnostics?.topPageComposition ?? null;
+    const topCompositionCategories = Array.isArray(topPageComposition?.categories)
+      ? topPageComposition.categories.map(categoryCompositionSummary)
+      : [];
+    const dominantCategory =
+      topPageComposition?.dominantCategory && typeof topPageComposition.dominantCategory === "object"
+        ? categoryCompositionSummary(topPageComposition.dominantCategory)
+        : null;
+    const topNEvaluated = Number(topPageComposition?.topNEvaluated ?? 0);
+    const dominantShare = Number(dominantCategory?.shareOfTopN ?? Number.NaN);
+    const categoryDominanceTriggered =
+      Number.isFinite(dominantShare) && topNEvaluated > 0 && dominantShare > categoryDominanceMaxShare;
+    ensure(
+      !categoryDominanceTriggered,
+      alertMessage(
+        "ALERT_CATEGORY_DOMINANCE",
+        `Top-${topNEvaluated} category concentration exceeded threshold (${dominantShare.toFixed(4)} > ${categoryDominanceMaxShare.toFixed(4)})`
+      ),
+      {
+        threshold: categoryDominanceMaxShare,
+        topNRequested: categoryDominanceTopN,
+        topNEvaluated,
+        dominantCategory,
+        categories: topCompositionCategories,
+      }
+    );
+
     const report = {
       ok: true,
       checkedAt,
       baseUrl,
       maxStaleMinutes,
       semanticFailureStreak,
+      categoryDominanceTopN,
+      categoryDominanceMaxShare,
       staleMinutes: Number(staleMinutes.toFixed(2)),
       endpoints: {
         healthUrl,
         feedUrl,
         metricsUrl,
+        diagnosticsUrl,
       },
       healthStatus: health.status,
       totalItems,
@@ -189,6 +241,14 @@ async function main() {
           triggered: semanticFailureStreakTriggered,
           window: semanticWindowSummaries,
         },
+        categoryDominance: {
+          thresholdShare: Number(categoryDominanceMaxShare.toFixed(4)),
+          topNRequested: categoryDominanceTopN,
+          topNEvaluated,
+          triggered: categoryDominanceTriggered,
+          dominantCategory,
+          categories: topCompositionCategories,
+        },
       },
     };
 
@@ -200,6 +260,8 @@ async function main() {
         baseUrl,
         maxStaleMinutes,
         semanticFailureStreak,
+        categoryDominanceTopN,
+        categoryDominanceMaxShare,
         step,
         ...(error.context || {}),
       };
@@ -215,6 +277,8 @@ main().catch((error) => {
     baseUrl,
     maxStaleMinutes,
     semanticFailureStreak,
+    categoryDominanceTopN,
+    categoryDominanceMaxShare,
     message: error?.message || String(error),
     detail: error?.detail ?? null,
     context: error?.context ?? null,
