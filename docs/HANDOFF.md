@@ -317,6 +317,12 @@ This file is the explicit handoff checkpoint.
    - `npm run check` passed after web analytics throttling updates.
 68. Next recommended milestone:
    - implement `MILESTONE-TAXONOMY-007` (region/category distribution panel in admin diagnostics).
+69. Rate milestone promotion complete:
+   - merged as `6341f99` (PR `#2`)
+   - CI `22253225521` + Deploy Cloudflare `22253225537` succeeded on `main`.
+70. Post-merge monitor confirmation:
+   - production monitor `22253244279` success
+   - staging monitor `22253244294` success.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

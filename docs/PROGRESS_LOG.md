@@ -542,3 +542,11 @@
    - `docs/ISSUE_CHECKLIST.md` adds `QA-007` completed.
 195. Validation:
    - `npm run check` => success after analytics throttling implementation.
+196. Promoted rate milestone to `main`:
+   - merged PR `#2` as commit `6341f99`.
+197. Post-merge pipeline status:
+   - CI run `22253225521` => success
+   - Deploy Cloudflare run `22253225537` => success.
+198. Post-merge monitor verification on `main`:
+   - production monitor `22253244279` => success
+   - staging monitor `22253244294` => success.
