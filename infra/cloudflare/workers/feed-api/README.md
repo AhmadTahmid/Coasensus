@@ -46,6 +46,11 @@ Reads from D1 tables:
    - `COASENSUS_FRONTPAGE_W2` (log-volume term)
    - `COASENSUS_FRONTPAGE_W3` (log-liquidity term)
    - `COASENSUS_FRONTPAGE_LAMBDA` (time-decay penalty per hour)
+6. Feed-read burst cache (Worker Cache API):
+   - `COASENSUS_FEED_CACHE_ENABLED` (`1` by default; set `0` to disable)
+   - `COASENSUS_FEED_CACHE_TTL_SECONDS` (default `45`)
+   - cache-bypass query: `GET /api/feed?...&cache=0`
+   - response header indicates cache path: `X-Coasensus-Feed-Cache` (`HIT|MISS|BYPASS`)
 
 ## Local dev (Wrangler)
 Run from repo root:
