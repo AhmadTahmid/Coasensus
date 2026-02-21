@@ -239,6 +239,17 @@ This file is the explicit handoff checkpoint.
      - production `22239978136`
      - staging `22239979666`
    - `/api/admin/semantic-metrics` remained healthy in both environments via monitor checks.
+44. Region milestone implementation (`MILESTONE-REGION-003`) completed on `agent/region-filter-pass1`:
+   - added migration `infra/db/migrations/0005_curated_feed_geo_tag.sql`
+   - refresh pipeline now persists semantic region to `curated_feed.geo_tag`
+   - API `/api/feed` adds `region` filter (alias `geoTag`) and returns `geoTag` in each item
+   - web UI now includes region control and region badges on cards.
+45. Local validation caveat in current sandbox:
+   - typecheck + lint pass
+   - full vitest runs fail due sandbox process spawn restriction (`spawn EPERM`)
+   - local wrangler dry-run/deploy could not run because npm registry access for `wrangler` is blocked.
+46. Next action after pushing:
+   - rely on GitHub CI + Deploy Cloudflare to run remote validation and apply migration `0005`, then verify staging/prod feed smoke with `region=US`.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

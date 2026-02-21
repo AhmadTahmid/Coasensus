@@ -10,6 +10,8 @@ type MarketCategory =
   | "entertainment"
   | "other";
 
+type GeoTag = "US" | "EU" | "Asia" | "Africa" | "MiddleEast" | "World";
+
 interface Market {
   id: string;
   question: string;
@@ -34,6 +36,7 @@ interface MarketScoreBreakdown {
 interface CuratedFeedItem extends Market {
   isCurated: boolean;
   decisionReason: string;
+  geoTag: GeoTag;
   score: MarketScoreBreakdown;
   frontPageScore: number;
 }
@@ -150,7 +153,7 @@ interface SemanticClassification {
   isMeme: boolean;
   newsworthinessScore: number;
   category: MarketCategory;
-  geoTag: string;
+  geoTag: GeoTag;
   confidence: number;
   modelName: string;
   promptVersion: string;
@@ -486,12 +489,31 @@ function computeFrontPageScore(
   return Number(score.toFixed(6));
 }
 
-function normalizeGeoTag(value: string | null | undefined): string {
+function normalizeGeoTag(value: string | null | undefined): GeoTag {
   const candidate = (value ?? "").trim();
-  if (!candidate || candidate.toLowerCase() === "undefined" || candidate.toLowerCase() === "null") {
+  if (!candidate) {
     return "World";
   }
-  return candidate;
+  const normalized = candidate.toLowerCase().replace(/[\s_-]+/g, "");
+  if (normalized === "undefined" || normalized === "null") {
+    return "World";
+  }
+  if (normalized === "us" || normalized === "usa" || normalized === "unitedstates") {
+    return "US";
+  }
+  if (normalized === "eu" || normalized === "europe") {
+    return "EU";
+  }
+  if (normalized === "asia") {
+    return "Asia";
+  }
+  if (normalized === "africa") {
+    return "Africa";
+  }
+  if (normalized === "middleeast" || normalized === "mena") {
+    return "MiddleEast";
+  }
+  return "World";
 }
 
 function toMarketCategory(value: string): MarketCategory {
@@ -864,7 +886,7 @@ function fingerprintMarket(market: Market, promptVersion: string): string {
   return hash.toString(16).padStart(8, "0");
 }
 
-function detectGeoTag(corpus: string): string {
+function detectGeoTag(corpus: string): GeoTag {
   if (/\b(us|usa|united states|white house|congress|senate)\b/i.test(corpus)) {
     return "US";
   }
@@ -1710,6 +1732,7 @@ function curateMarkets(
       ...market,
       isCurated,
       decisionReason,
+      geoTag: semantic.geoTag,
       score,
       frontPageScore,
     };
@@ -1757,52 +1780,35 @@ async function replaceCuratedFeedSnapshot(
   await db.prepare("DELETE FROM curated_feed").run();
 
   const hasFrontPageScore = await curatedFeedHasColumn(db, "front_page_score");
-
-  const insertSql = hasFrontPageScore
-    ? `
-        INSERT INTO curated_feed (
-          market_id,
-          question,
-          description,
-          url,
-          end_date,
-          liquidity,
-          volume,
-          open_interest,
-          category,
-          civic_score,
-          newsworthiness_score,
-          front_page_score,
-          is_curated,
-          decision_reason,
-          reason_codes_json,
-          created_at,
-          updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `
-    : `
-        INSERT INTO curated_feed (
-          market_id,
-          question,
-          description,
-          url,
-          end_date,
-          liquidity,
-          volume,
-          open_interest,
-          category,
-          civic_score,
-          newsworthiness_score,
-          is_curated,
-          decision_reason,
-          reason_codes_json,
-          created_at,
-          updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
+  const hasGeoTag = await curatedFeedHasColumn(db, "geo_tag");
+  const columns = [
+    "market_id",
+    "question",
+    "description",
+    "url",
+    "end_date",
+    "liquidity",
+    "volume",
+    "open_interest",
+    "category",
+    "civic_score",
+    "newsworthiness_score",
+    ...(hasGeoTag ? ["geo_tag"] : []),
+    ...(hasFrontPageScore ? ["front_page_score"] : []),
+    "is_curated",
+    "decision_reason",
+    "reason_codes_json",
+    "created_at",
+    "updated_at",
+  ];
+  const placeholders = columns.map(() => "?").join(", ");
+  const insertSql = `
+    INSERT INTO curated_feed (${columns.join(", ")})
+    VALUES (${placeholders})
+  `;
 
   const statements = items.map((item) => {
-    const common = [
+    const bindings: unknown[] = [
       item.id,
       item.question,
       item.description,
@@ -1815,14 +1821,19 @@ async function replaceCuratedFeedSnapshot(
       item.score.civicScore,
       item.score.newsworthinessScore,
     ];
-    const tail = [
+    if (hasGeoTag) {
+      bindings.push(item.geoTag);
+    }
+    if (hasFrontPageScore) {
+      bindings.push(item.frontPageScore);
+    }
+    bindings.push(
       item.isCurated ? 1 : 0,
       item.decisionReason,
       JSON.stringify(item.score.reasonCodes),
       item.createdAt,
       item.updatedAt,
-    ];
-    const bindings = hasFrontPageScore ? [...common, item.frontPageScore, ...tail] : [...common, ...tail];
+    );
     return db.prepare(insertSql).bind(...bindings);
   });
 

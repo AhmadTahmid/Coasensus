@@ -15,6 +15,7 @@ describe("buildFeedQueryString", () => {
       pageSize: 50,
       sort: "volume",
       category: "policy",
+      region: "US",
       search: " election forecast ",
       includeRejected: true,
     });
@@ -23,6 +24,7 @@ describe("buildFeedQueryString", () => {
     expect(query).toContain("pageSize=50");
     expect(query).toContain("sort=volume");
     expect(query).toContain("category=policy");
+    expect(query).toContain("region=US");
     expect(query).toContain("q=election+forecast");
     expect(query).toContain("includeRejected=1");
   });

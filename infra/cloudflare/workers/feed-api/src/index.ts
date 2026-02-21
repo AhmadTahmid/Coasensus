@@ -12,6 +12,8 @@ type MarketCategory =
   | "entertainment"
   | "other";
 
+type GeoTag = "US" | "EU" | "Asia" | "Africa" | "MiddleEast" | "World";
+
 type FeedSort = "score" | "volume" | "liquidity" | "endDate";
 
 interface Env {
@@ -54,6 +56,7 @@ interface CuratedFeedRow {
   volume: number | null;
   open_interest: number | null;
   category: string;
+  geo_tag?: string | null;
   civic_score: number;
   newsworthiness_score: number;
   front_page_score?: number | null;
@@ -196,6 +199,40 @@ function asCategory(value: string | null): MarketCategory | null {
   return CATEGORY_SET.has(value as MarketCategory) ? (value as MarketCategory) : null;
 }
 
+function asGeoTag(value: string | null): GeoTag | null {
+  if (!value) {
+    return null;
+  }
+  const normalized = value.trim().toLowerCase().replace(/[\s_-]+/g, "");
+  if (!normalized) {
+    return null;
+  }
+  if (normalized === "us" || normalized === "usa" || normalized === "unitedstates") {
+    return "US";
+  }
+  if (normalized === "eu" || normalized === "europe") {
+    return "EU";
+  }
+  if (normalized === "asia") {
+    return "Asia";
+  }
+  if (normalized === "africa") {
+    return "Africa";
+  }
+  if (normalized === "middleeast" || normalized === "mena") {
+    return "MiddleEast";
+  }
+  if (normalized === "world" || normalized === "global") {
+    return "World";
+  }
+  return null;
+}
+
+function toGeoTag(value: string | null | undefined): GeoTag {
+  const parsed = asGeoTag(value ?? null);
+  return parsed ?? "World";
+}
+
 function asSearchQuery(value: string | null): string | null {
   if (!value) {
     return null;
@@ -328,8 +365,11 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
     const pageSize = asPositiveInt(url.searchParams.get("pageSize"), defaultPageSize(env), 1, 100);
     const sort = asFeedSort(url.searchParams.get("sort"));
     const category = asCategory(url.searchParams.get("category"));
+    const region = asGeoTag(url.searchParams.get("region") ?? url.searchParams.get("geoTag"));
     const searchQuery = asSearchQuery(url.searchParams.get("q") ?? url.searchParams.get("search"));
     const includeRejected = url.searchParams.get("includeRejected") === "1";
+    const hasFrontPageScore = await curatedFeedHasColumn(env.DB, "front_page_score");
+    const hasGeoTag = await curatedFeedHasColumn(env.DB, "geo_tag");
 
     const whereParts: string[] = [];
     const whereBindings: unknown[] = [];
@@ -340,6 +380,10 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
       whereParts.push("category = ?");
       whereBindings.push(category);
     }
+    if (region && hasGeoTag) {
+      whereParts.push("geo_tag = ?");
+      whereBindings.push(region);
+    }
     if (searchQuery) {
       const pattern = `%${escapeLikePattern(searchQuery.toLowerCase())}%`;
       whereParts.push(
@@ -349,9 +393,9 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
     }
 
     const whereSql = whereParts.length > 0 ? `WHERE ${whereParts.join(" AND ")}` : "";
-    const hasFrontPageScore = await curatedFeedHasColumn(env.DB, "front_page_score");
     const orderBySql = resolveSortSql(sort, hasFrontPageScore);
     const frontPageSelectSql = hasFrontPageScore ? "front_page_score," : "";
+    const geoTagSelectSql = hasGeoTag ? "geo_tag," : "";
 
     let refreshSummary: Awaited<ReturnType<typeof refreshCuratedFeed>> | null = null;
     let refreshError: string | null = null;
@@ -388,6 +432,7 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
         volume,
         open_interest,
         category,
+        ${geoTagSelectSql}
         civic_score,
         newsworthiness_score,
         ${frontPageSelectSql}
@@ -417,6 +462,7 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
       volume: toNumberOrNull(row.volume),
       openInterest: toNumberOrNull(row.open_interest),
       tags: [],
+      geoTag: toGeoTag(row.geo_tag),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       isCurated: Number(row.is_curated) === 1,
@@ -441,10 +487,12 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
           pageSize,
           sort,
           category,
+          region,
           searchQuery,
           includeRejected,
           sourcePath: "d1:curated_feed",
           scoreFormula: hasFrontPageScore ? "front_page_score_v1" : "legacy_civic_plus_newsworthiness",
+          regionFilterApplied: Boolean(region && hasGeoTag),
           refreshAttempted: refreshSummary !== null || refreshError !== null,
           refreshRunId: refreshSummary?.runId ?? null,
           refreshError,
@@ -864,7 +912,7 @@ export default {
         error: "Not found",
         routes: [
           "/api/health",
-          "/api/feed?page=1&pageSize=20&sort=score",
+          "/api/feed?page=1&pageSize=20&sort=score&region=US",
           "/api/admin/refresh-feed",
           "/api/admin/semantic-metrics",
           "/api/admin/feed-diagnostics",

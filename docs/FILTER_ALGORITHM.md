@@ -81,6 +81,7 @@ Each raw Polymarket record is normalized to:
 - `tags`
 - `createdAt`
 - `updatedAt`
+- semantic `geoTag` (`US|EU|Asia|Africa|MiddleEast|World`) is attached during enrichment and persisted for feed filtering
 
 Records missing required fields (for example no `id` or no `question`) are dropped during normalization.
 
@@ -207,6 +208,7 @@ Default API behavior:
 - Returns only curated markets (`is_curated = 1`)
 - Paginated response (`page`, `pageSize`)
 - Optional text search with `q=<term>` against market `question` and `description`
+- Optional region filter with `region=<US|EU|Asia|Africa|MiddleEast|World>`
 
 ## 12. Why some markets appear first
 
