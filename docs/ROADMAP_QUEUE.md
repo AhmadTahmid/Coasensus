@@ -20,11 +20,12 @@ Lightweight tracker to keep momentum high while preserving deferred work.
 - [x] `MILESTONE-PERF-008` Add cached feed query path for high-traffic read bursts.
 - [x] `MILESTONE-LAUNCH-STABILITY-009` Automate 24h launch-stability gate tracking (monitor pass window + readiness status).
 - [x] `MILESTONE-CATEGORY-SANITY-010` Add automated category-dominance checks for top feed cards.
-- [ ] `MILESTONE-EDITORIAL-SPOTCHECK-011` Add top-20 feed snapshot + reviewer log workflow.
+- [x] `MILESTONE-EDITORIAL-SPOTCHECK-011` Add top-20 feed snapshot + reviewer log workflow.
+- [ ] `MILESTONE-DASHBOARD-012` Add lightweight admin diagnostics dashboard view (read-only).
 
 ## Next
 
-- [ ] `MILESTONE-DASHBOARD-012` Add lightweight admin diagnostics dashboard view (read-only).
+- (none)
 
 ## Later
 

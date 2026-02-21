@@ -460,6 +460,27 @@ This file is the explicit handoff checkpoint.
    - production monitor `22254357091` success.
    - staging monitor `22254357097` success.
    - both runs reported category-dominance checks with `triggered=false`.
+113. Started `MILESTONE-EDITORIAL-SPOTCHECK-011` on branch `agent/editorial-spotcheck-pass1`.
+114. Added daily editorial snapshot generator:
+   - new script: `scripts/editorial-spotcheck.mjs`.
+   - captures top-N feed cards (default 20) from production and staging.
+   - output artifacts:
+     - `artifacts/editorial-spotcheck.json`
+     - `artifacts/editorial-spotcheck.md`
+   - includes category composition and dominant category summary for reviewed cards.
+115. Added scheduled workflow:
+   - `.github/workflows/editorial-spotcheck.yml`
+   - schedule: daily (`11 13 * * *`) + manual dispatch.
+   - uploads editorial snapshot artifacts for each run.
+116. Added reviewer decision path:
+   - created `docs/EDITORIAL_REVIEW_LOG.md` with reviewer/timestamp/notes template.
+117. Launch-gate integration:
+   - `docs/LAUNCH_GATES.md` now requires latest Editorial Spotcheck artifact + review log confirmation before launch sign-off.
+118. Queue/checklist updates:
+   - `docs/ROADMAP_QUEUE.md` marks `MILESTONE-EDITORIAL-SPOTCHECK-011` complete and promotes `MILESTONE-DASHBOARD-012`.
+   - `docs/ISSUE_CHECKLIST.md` adds `QA-012` completed.
+119. Validation (local):
+   - `npm run check` passed after editorial spotcheck implementation.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
