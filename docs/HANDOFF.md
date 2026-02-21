@@ -305,6 +305,18 @@ This file is the explicit handoff checkpoint.
 64. Post-merge monitor confirmation:
    - production monitor `22253101327` success
    - staging monitor `22253101546` success.
+65. Rate milestone implementation (`MILESTONE-RATE-006`) completed on `agent/rate-limit-pass1`:
+   - web analytics sender now applies per-session sampling + cooldown policy before POSTing `/api/analytics`.
+   - persisted session-local analytics counters in `localStorage` key `coasensus_analytics_state_v1`.
+   - added global session cap (`ANALYTICS_MAX_EVENTS_PER_SESSION=160`) and event-level limits.
+66. Sampling/rate policy highlights:
+   - `feed_loaded`: sampled at `0.4`, min interval `60s`, max `24` per session.
+   - `pagination_{next,previous}`: sampled at `0.5`, min interval `2s`, max `36` per session.
+   - noisy toggle/search events now include short cooldowns (`~1.2s`) and per-session caps.
+67. Validation:
+   - `npm run check` passed after web analytics throttling updates.
+68. Next recommended milestone:
+   - implement `MILESTONE-TAXONOMY-007` (region/category distribution panel in admin diagnostics).
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

@@ -527,3 +527,18 @@
    - staging monitor `22253101546` => success.
 190. Monitor output verification from workflow logs:
    - reports now include `semanticFailureStreak`, `alerts.semanticFailureStreak`, and explicit alert-ready telemetry window data in both environments.
+191. Started `MILESTONE-RATE-006` on branch `agent/rate-limit-pass1`.
+192. Added per-session analytics sampling + rate limiting in web client (`apps/web/public/app.js`):
+   - introduced local analytics policy map with per-event `sampleRate`, `minIntervalMs`, and `maxPerSession`.
+   - added session-persistent analytics state (`coasensus_analytics_state_v1`) to maintain event counters across reloads.
+   - added global per-session cap (`ANALYTICS_MAX_EVENTS_PER_SESSION=160`) to avoid runaway writes.
+193. Applied targeted high-noise throttles:
+   - `feed_loaded` now sampled at `0.4`, minimum interval `60s`, max `24` events/session.
+   - pagination events now sampled at `0.5`, minimum interval `2s`.
+   - rapid control change events (`search/sort/category/region/includeRejected`) now rate-limited with cooldowns and caps.
+194. Updated web docs and milestone board:
+   - `apps/web/README.md` now documents rate-limited/sampled analytics behavior.
+   - `docs/ROADMAP_QUEUE.md` marks `MILESTONE-RATE-006` complete and promotes `MILESTONE-TAXONOMY-007` as active.
+   - `docs/ISSUE_CHECKLIST.md` adds `QA-007` completed.
+195. Validation:
+   - `npm run check` => success after analytics throttling implementation.
