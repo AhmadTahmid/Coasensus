@@ -16,11 +16,12 @@ Lightweight tracker to keep momentum high while preserving deferred work.
 - [x] `MILESTONE-TREND-004` Add trending-shift metric (delta vs previous refresh) and card indicator.
 - [x] `MILESTONE-ALERT-005` Add explicit alerts for repeated semantic failures and stale feed.
 - [x] `MILESTONE-RATE-006` Add per-session rate-limited analytics sampling to reduce noisy events.
-- [ ] `MILESTONE-TAXONOMY-007` Add explicit region/category distribution panel to admin diagnostics.
+- [x] `MILESTONE-TAXONOMY-007` Add explicit region/category distribution panel to admin diagnostics.
+- [ ] `MILESTONE-PERF-008` Add cached feed query path for high-traffic read bursts.
 
 ## Next
 
-- [ ] `MILESTONE-PERF-008` Add cached feed query path for high-traffic read bursts.
+- (none)
 
 ## Later
 

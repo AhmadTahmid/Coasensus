@@ -323,6 +323,21 @@ This file is the explicit handoff checkpoint.
 70. Post-merge monitor confirmation:
    - production monitor `22253244279` success
    - staging monitor `22253244294` success.
+71. Taxonomy milestone implementation (`MILESTONE-TAXONOMY-007`) completed on `agent/taxonomy-pass1`:
+   - `GET /api/admin/feed-diagnostics` now includes explicit taxonomy distribution payload:
+     - `regionCounts`
+     - `regionCategoryDistribution`
+     - `taxonomyPanel` (`regions`, `categories`, `regionCategory`)
+   - category and region rows now include normalized ratio fields for diagnostics:
+     - `shareOfFeed`
+     - `curatedShareWithinCategory` / `curatedShareWithinRegion`.
+72. Backward compatibility behavior:
+   - existing fields (`counts`, `categoryCounts`, `topDecisionReasons`, `topReasonCodes`) remain present.
+   - when `geo_tag` is unavailable, diagnostics safely fall back to synthetic `World` region totals.
+73. Validation:
+   - `npm run check` passed after taxonomy diagnostics expansion.
+74. Next recommended milestone:
+   - implement `MILESTONE-PERF-008` (cached feed query path for high-traffic read bursts).
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
