@@ -831,3 +831,23 @@
      - `docs/POST_V2_BACKLOG.md`
      - `docs/ROADMAP_QUEUE.md`
      - `docs/ISSUE_CHECKLIST.md`.
+288. Implemented odds + canonical market link enhancement:
+   - feed cards now render bold `Odds / Price` values in `apps/web/public/app.js` + `apps/web/public/styles.css`.
+   - card links now sanitize to Polymarket domain and hard-fallback to `https://polymarket.com/market/<id>` when source URLs are missing/invalid.
+289. Added normalized probability extraction from Polymarket payloads:
+   - ingestion normalizer reads `outcomes`/`outcomePrices` and falls back to `lastTradePrice` / bid-ask midpoint.
+   - files updated:
+     - `services/ingest-worker/src/normalize.ts`
+     - `infra/cloudflare/workers/feed-api/src/refresh.ts`.
+290. Added schema support for persisted probability in D1 feed snapshot:
+   - migration added: `infra/db/migrations/0008_curated_feed_probability.sql`.
+   - refresh snapshot writer now stores `curated_feed.probability` when column exists.
+291. API feed response now exposes `probability` per item:
+   - `infra/cloudflare/workers/feed-api/src/index.ts` adds dynamic `probability` column projection with migration-safe fallback.
+292. Added ingestion regression coverage:
+   - extended `services/ingest-worker/src/normalize.test.ts` for:
+     - yes/outcome price extraction
+     - non-polymarket URL fallback behavior.
+293. Validation:
+   - `npm run check` => success.
+   - `npx wrangler deploy --dry-run --config infra/cloudflare/wrangler.api.ci.jsonc --env staging` => success.

@@ -17,6 +17,12 @@ export interface RawPolymarketMarket {
   volumeNum?: number | string;
   openInterest?: number | string;
   open_interest?: number | string;
+  outcomes?: string[] | string;
+  outcomePrices?: number[] | string[] | string;
+  lastTradePrice?: number | string;
+  bestBid?: number | string;
+  bestAsk?: number | string;
+  price?: number | string;
   tags?: string[] | string;
   events?: Array<{
     title?: string;
@@ -45,6 +51,108 @@ function asStringOrNull(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
 
+function parseStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  }
+  if (typeof value !== "string" || !value.trim()) {
+    return [];
+  }
+  const trimmed = value.trim();
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+      }
+    } catch {
+      // fall through to comma split
+    }
+  }
+  return trimmed
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function parseNumberArray(value: unknown): number[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => Number(item))
+      .filter((item) => Number.isFinite(item));
+  }
+  if (typeof value !== "string" || !value.trim()) {
+    return [];
+  }
+  const trimmed = value.trim();
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => Number(item))
+          .filter((item) => Number.isFinite(item));
+      }
+    } catch {
+      // fall through to comma split
+    }
+  }
+  return trimmed
+    .split(",")
+    .map((item) => Number(item.trim()))
+    .filter((item) => Number.isFinite(item));
+}
+
+function normalizeProbability(value: number | null): number | null {
+  if (value === null) {
+    return null;
+  }
+  if (value >= 0 && value <= 1) {
+    return Number(value.toFixed(6));
+  }
+  if (value > 1 && value <= 100) {
+    return Number((value / 100).toFixed(6));
+  }
+  return null;
+}
+
+function extractProbability(raw: RawPolymarketMarket): number | null {
+  const outcomes = parseStringArray(raw.outcomes);
+  const prices = parseNumberArray(raw.outcomePrices);
+
+  if (outcomes.length > 0 && outcomes.length === prices.length) {
+    const yesIndex = outcomes.findIndex((label) => label.trim().toLowerCase() === "yes");
+    if (yesIndex >= 0) {
+      const yesPrice = normalizeProbability(prices[yesIndex] ?? null);
+      if (yesPrice !== null) {
+        return yesPrice;
+      }
+    }
+    const first = normalizeProbability(prices[0] ?? null);
+    if (first !== null) {
+      return first;
+    }
+  } else if (prices.length > 0) {
+    const first = normalizeProbability(prices[0] ?? null);
+    if (first !== null) {
+      return first;
+    }
+  }
+
+  const direct = normalizeProbability(asNumberOrNull(raw.lastTradePrice ?? raw.price));
+  if (direct !== null) {
+    return direct;
+  }
+
+  const bid = asNumberOrNull(raw.bestBid);
+  const ask = asNumberOrNull(raw.bestAsk);
+  if (bid !== null && ask !== null) {
+    return normalizeProbability((bid + ask) / 2);
+  }
+
+  return null;
+}
+
 function normalizeTags(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value.filter((item): item is string => typeof item === "string");
@@ -67,10 +175,26 @@ function extractEventTags(raw: RawPolymarketMarket): string[] {
   return [...new Set(allTags)];
 }
 
+function toHttpsPolymarketUrl(value: string): string | null {
+  try {
+    const parsed = new URL(value);
+    if (parsed.hostname === "polymarket.com" || parsed.hostname.endsWith(".polymarket.com")) {
+      parsed.protocol = "https:";
+      return parsed.toString();
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function inferMarketUrl(raw: RawPolymarketMarket, id: string): string {
   const directUrl = asStringOrNull(raw.url);
   if (directUrl) {
-    return directUrl;
+    const polymarketUrl = toHttpsPolymarketUrl(directUrl);
+    if (polymarketUrl) {
+      return polymarketUrl;
+    }
   }
 
   if (raw.slug && raw.slug.trim().length > 0) {
@@ -108,6 +232,7 @@ export function normalizeMarket(raw: RawPolymarketMarket): Market {
     question,
     description: asStringOrNull(raw.description),
     url,
+    probability: extractProbability(raw),
     endDate:
       asStringOrNull(raw.endDate) ??
       asStringOrNull(raw.end_date) ??

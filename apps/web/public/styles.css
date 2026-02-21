@@ -269,6 +269,20 @@ body {
   white-space: nowrap;
 }
 
+.odds-pill {
+  border: 1px solid #9f3027;
+  background: #fff3e6;
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-size: 13px;
+  color: #6f1b15;
+  white-space: nowrap;
+}
+
+.odds-pill strong {
+  font-weight: 800;
+}
+
 .card h2,
 .card h3 {
   margin: 10px 0 10px;

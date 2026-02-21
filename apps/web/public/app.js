@@ -298,6 +298,37 @@ function fmtDate(value) {
   return date.toLocaleDateString();
 }
 
+function normalizeProbability(value) {
+  const num = toNumber(value);
+  if (num === null) return null;
+  if (num >= 0 && num <= 1) return num;
+  if (num > 1 && num <= 100) return num / 100;
+  return null;
+}
+
+function fmtProbabilityPrice(value) {
+  const probability = normalizeProbability(value);
+  if (probability === null) return "n/a";
+  const percent = probability * 100;
+  return `${percent.toFixed(1)}% (${percent.toFixed(1)}c)`;
+}
+
+function resolvePolymarketLink(rawUrl, marketId) {
+  const fallback = `https://polymarket.com/market/${encodeURIComponent(marketId)}`;
+  if (!rawUrl) return fallback;
+  try {
+    const parsed = new URL(rawUrl);
+    const host = parsed.hostname.toLowerCase();
+    if (host === "polymarket.com" || host.endsWith(".polymarket.com")) {
+      parsed.protocol = "https:";
+      return parsed.toString();
+    }
+  } catch {
+    // Fall through to fallback below.
+  }
+  return fallback;
+}
+
 function formatTrendDelta(value) {
   const num = toNumber(value);
   if (num === null) return { label: "Trend n/a", className: "flat" };
@@ -407,6 +438,8 @@ function renderCards(items) {
     const decision = formatDecisionReason(item.decisionReason);
     const deck = truncateDescription(item.description);
     const titleTag = isLead ? "h2" : "h3";
+    const oddsPrice = fmtProbabilityPrice(item.probability);
+    const marketLink = resolvePolymarketLink(item.url, item.id);
 
     return `
       <article class="card ${isLead ? "lead-card" : "story-card"}">
@@ -418,6 +451,7 @@ function renderCards(items) {
             <span class="badge trend-badge ${trend.className}">${trend.label}</span>
             ${item.isCurated ? "" : `<span class="badge rejected">Rejected</span>`}
           </div>
+          <span class="odds-pill"><strong>Odds / Price ${oddsPrice}</strong></span>
           <span class="score-pill">Front Page ${frontPageScore}</span>
         </div>
         <${titleTag}>${item.question}</${titleTag}>
@@ -435,7 +469,7 @@ function renderCards(items) {
             data-market-question="${encodeURIComponent(item.question)}"
             data-market-category="${item.score?.category || "other"}"
             data-market-region="${item.geoTag || "World"}"
-            href="${item.url}"
+            href="${marketLink}"
             target="_blank"
             rel="noreferrer"
           >Open on Polymarket</a>

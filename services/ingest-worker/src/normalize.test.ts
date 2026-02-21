@@ -12,6 +12,8 @@ describe("normalizeMarket", () => {
       liquidityNum: "12500.5",
       volumeNum: "34000",
       open_interest: "9800",
+      outcomes: '["Yes","No"]',
+      outcomePrices: '["0.61","0.39"]',
       tags: "economy,macro",
     });
 
@@ -21,6 +23,7 @@ describe("normalizeMarket", () => {
     expect(normalized.liquidity).toBe(12500.5);
     expect(normalized.volume).toBe(34000);
     expect(normalized.openInterest).toBe(9800);
+    expect(normalized.probability).toBe(0.61);
     expect(normalized.tags).toEqual(["economy", "macro"]);
   });
 
@@ -40,6 +43,19 @@ describe("normalizeMarket", () => {
     expect(normalized.url).toBe("https://polymarket.com/event/congress-bill-vote");
     expect(normalized.tags).toEqual(["policy", "politics"]);
     expect(normalized.openInterest).toBe(1234);
+  });
+
+  it("only trusts polymarket links and falls back when direct url is external", () => {
+    const normalized = normalizeMarket({
+      id: "evt-2",
+      question: "Will CPI print below 3%?",
+      url: "https://example.com/not-polymarket",
+      slug: "cpi-below-3",
+      lastTradePrice: "0.48",
+    });
+
+    expect(normalized.url).toBe("https://polymarket.com/event/cpi-below-3");
+    expect(normalized.probability).toBe(0.48);
   });
 
   it("throws when id or question is missing", () => {
