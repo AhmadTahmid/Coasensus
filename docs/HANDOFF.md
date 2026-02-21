@@ -263,6 +263,20 @@ This file is the explicit handoff checkpoint.
    - staging monitor `22252722052` success.
 51. Next recommended milestone:
    - implement `MILESTONE-TREND-004` (trending-shift delta vs previous refresh + UI indicator).
+52. Trend milestone implementation (`MILESTONE-TREND-004`) completed on `agent/trend-shift-pass1`:
+   - added migration `infra/db/migrations/0006_curated_feed_trend_delta.sql`
+   - refresh pipeline now computes and persists `trend_delta` for each market vs previous refresh snapshot
+   - API `/api/feed` supports `sort=trend` and returns `trendDelta` per item
+   - web UI includes `Trending up` sort and trend badges on cards.
+53. Staging rollout for trend milestone:
+   - applied `0006_curated_feed_trend_delta.sql` to `coasensus-staging`
+   - deployed staging worker version `60ae8bdd-a633-4050-9f79-4a689f53aaec`
+   - staging smoke for `sort=trend` is healthy with `trendSortAvailable=true`.
+54. Validation status:
+   - `npm run check` passed
+   - worker dry-run deploy for staging passed.
+55. Next recommended milestone:
+   - implement `MILESTONE-ALERT-005` (explicit alerts for repeated semantic failures and stale feed).
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

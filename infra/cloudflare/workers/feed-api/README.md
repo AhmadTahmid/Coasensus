@@ -4,7 +4,7 @@ Cloudflare Worker API for Coasensus.
 
 ## Routes
 1. `GET /api/health`
-2. `GET /api/feed?page=1&pageSize=20&sort=score&q=election&region=US`
+2. `GET /api/feed?page=1&pageSize=20&sort=trend&q=election&region=US`
 3. `POST /api/admin/refresh-feed` (manual ingestion refresh; requires `X-Admin-Token` if `COASENSUS_ADMIN_REFRESH_TOKEN` secret is set)
 4. `GET /api/admin/semantic-metrics?limit=30` (admin-protected telemetry snapshot)
 5. `POST /api/analytics`
@@ -60,4 +60,5 @@ curl "http://127.0.0.1:8787/api/health"
 curl "http://127.0.0.1:8787/api/feed?page=1&pageSize=20&sort=score"
 curl "http://127.0.0.1:8787/api/feed?page=1&pageSize=20&sort=score&q=inflation"
 curl "http://127.0.0.1:8787/api/feed?page=1&pageSize=20&sort=score&region=US"
+curl "http://127.0.0.1:8787/api/feed?page=1&pageSize=20&sort=trend"
 ```

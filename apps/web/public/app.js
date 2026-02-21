@@ -118,6 +118,14 @@ function fmtDate(value) {
   return date.toLocaleDateString();
 }
 
+function formatTrendDelta(value) {
+  const num = toNumber(value);
+  if (num === null) return { label: "Trend n/a", className: "flat" };
+  if (num > 0) return { label: `Trend ↑ +${num.toFixed(2)}`, className: "up" };
+  if (num < 0) return { label: `Trend ↓ ${num.toFixed(2)}`, className: "down" };
+  return { label: "Trend ↔ 0.00", className: "flat" };
+}
+
 function titleCaseCategory(category) {
   return String(category || "other")
     .split("_")
@@ -215,6 +223,7 @@ function renderCards(items) {
     const badgeCategory = titleCaseCategory(item.score?.category);
     const badgeRegion = formatGeoTag(item.geoTag);
     const frontPageScore = fmtScore(resolveFrontPageScore(item));
+    const trend = formatTrendDelta(item.trendDelta);
     const decision = formatDecisionReason(item.decisionReason);
     const deck = truncateDescription(item.description);
     const titleTag = isLead ? "h2" : "h3";
@@ -226,6 +235,7 @@ function renderCards(items) {
             ${isLead ? `<span class="lead-kicker">Front Page Lead</span>` : ""}
             <span class="badge">${badgeCategory}</span>
             <span class="badge region-badge">${badgeRegion}</span>
+            <span class="badge trend-badge ${trend.className}">${trend.label}</span>
             ${item.isCurated ? "" : `<span class="badge rejected">Rejected</span>`}
           </div>
           <span class="score-pill">Front Page ${frontPageScore}</span>

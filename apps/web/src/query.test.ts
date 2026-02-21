@@ -33,4 +33,9 @@ describe("buildFeedQueryString", () => {
     const query = buildFeedQueryString({ search: "   " });
     expect(query).not.toContain("q=");
   });
+
+  it("supports trend sort", () => {
+    const query = buildFeedQueryString({ sort: "trend" });
+    expect(query).toContain("sort=trend");
+  });
 });

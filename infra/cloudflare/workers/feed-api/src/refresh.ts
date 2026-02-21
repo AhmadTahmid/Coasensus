@@ -39,6 +39,7 @@ interface CuratedFeedItem extends Market {
   geoTag: GeoTag;
   score: MarketScoreBreakdown;
   frontPageScore: number;
+  trendDelta: number;
 }
 
 interface RawPolymarketMarket {
@@ -1735,6 +1736,7 @@ function curateMarkets(
       geoTag: semantic.geoTag,
       score,
       frontPageScore,
+      trendDelta: 0,
     };
 
     if (isCurated) {
@@ -1777,10 +1779,29 @@ async function replaceCuratedFeedSnapshot(
   droppedCount: number,
   items: CuratedFeedItem[]
 ): Promise<void> {
-  await db.prepare("DELETE FROM curated_feed").run();
-
   const hasFrontPageScore = await curatedFeedHasColumn(db, "front_page_score");
   const hasGeoTag = await curatedFeedHasColumn(db, "geo_tag");
+  const hasTrendDelta = await curatedFeedHasColumn(db, "trend_delta");
+  const previousFrontPageScores = new Map<string, number>();
+
+  if (hasFrontPageScore && hasTrendDelta) {
+    try {
+      const existingRows = await db
+        .prepare("SELECT market_id, front_page_score FROM curated_feed")
+        .all<{ market_id: string; front_page_score: number | null }>();
+      for (const row of existingRows.results ?? []) {
+        const score = Number(row.front_page_score);
+        if (Number.isFinite(score)) {
+          previousFrontPageScores.set(row.market_id, score);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load previous front-page scores for trend delta", error);
+    }
+  }
+
+  await db.prepare("DELETE FROM curated_feed").run();
+
   const columns = [
     "market_id",
     "question",
@@ -1795,6 +1816,7 @@ async function replaceCuratedFeedSnapshot(
     "newsworthiness_score",
     ...(hasGeoTag ? ["geo_tag"] : []),
     ...(hasFrontPageScore ? ["front_page_score"] : []),
+    ...(hasTrendDelta ? ["trend_delta"] : []),
     "is_curated",
     "decision_reason",
     "reason_codes_json",
@@ -1826,6 +1848,11 @@ async function replaceCuratedFeedSnapshot(
     }
     if (hasFrontPageScore) {
       bindings.push(item.frontPageScore);
+    }
+    if (hasTrendDelta) {
+      const previous = previousFrontPageScores.get(item.id);
+      const trendDelta = previous === undefined ? 0 : Number((item.frontPageScore - previous).toFixed(6));
+      bindings.push(trendDelta);
     }
     bindings.push(
       item.isCurated ? 1 : 0,

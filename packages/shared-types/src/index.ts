@@ -10,6 +10,8 @@ export type MarketCategory =
   | "entertainment"
   | "other";
 
+export type GeoTag = "US" | "EU" | "Asia" | "Africa" | "MiddleEast" | "World";
+
 export interface Market {
   id: string;
   question: string;
@@ -34,6 +36,8 @@ export interface MarketScoreBreakdown {
 export interface CuratedFeedItem extends Market {
   isCurated: boolean;
   decisionReason: string;
+  geoTag?: GeoTag;
   score: MarketScoreBreakdown;
   frontPageScore?: number | null;
+  trendDelta?: number | null;
 }

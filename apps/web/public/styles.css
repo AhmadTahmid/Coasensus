@@ -246,6 +246,18 @@ body {
   background: #4b4f58;
 }
 
+.badge.trend-badge.up {
+  background: #1d6b36;
+}
+
+.badge.trend-badge.down {
+  background: #8d251f;
+}
+
+.badge.trend-badge.flat {
+  background: #58616b;
+}
+
 .score-pill {
   border: 1px solid #c9b494;
   background: var(--accent-soft);
