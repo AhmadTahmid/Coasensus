@@ -383,6 +383,26 @@ This file is the explicit handoff checkpoint.
 90. Post-sync monitor confirmation:
    - production monitor `22253876652` success
    - staging monitor `22253876653` success.
+91. Launch-stability milestone implementation (`MILESTONE-LAUNCH-STABILITY-009`) completed on `agent/launch-stability-pass1`:
+   - added script `scripts/launch-stability.mjs` to compute 24h readiness from monitor workflow history.
+   - output artifacts:
+     - `artifacts/launch-status.json`
+     - `artifacts/launch-status.md`
+   - workflow returns non-zero when gate criteria are not met.
+92. New workflow added:
+   - `.github/workflows/launch-stability.yml`
+   - schedule: hourly (`17 * * * *`) + manual dispatch.
+   - uploads launch-status artifacts even when readiness fails.
+93. Launch-stability checks include:
+   - run count floors (prod/staging), failure threshold, empty-hour threshold, max run-gap threshold.
+   - per-hour pass/fail rollup to show stability coverage across window.
+94. Launch docs/queue updates:
+   - `docs/LAUNCH_GATES.md` now includes Launch Stability workflow in go-live checklist.
+   - `docs/ROADMAP_QUEUE.md` marks `MILESTONE-LAUNCH-STABILITY-009` complete and promotes `MILESTONE-CATEGORY-SANITY-010`.
+95. Validation:
+   - `npm run check` passed.
+   - local script success-path validated with short-window env overrides.
+   - note: strict 24h window currently reports `overallReady=false` due historical failure/gaps, which is expected until the next clean stability window.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

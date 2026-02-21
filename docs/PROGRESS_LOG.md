@@ -631,3 +631,26 @@
 228. Monitor verification after docs sync:
    - production monitor `22253876652` => success
    - staging monitor `22253876653` => success.
+229. Started `MILESTONE-LAUNCH-STABILITY-009` on branch `agent/launch-stability-pass1`.
+230. Added launch-stability evaluator script:
+   - `scripts/launch-stability.mjs` queries GitHub Actions workflow runs for monitor workflows across a rolling window (default 24h).
+   - computes per-workflow readiness from:
+     - minimum run count
+     - failure-count threshold
+     - empty-hour threshold
+     - maximum observed gap between runs.
+231. Added artifact and summary outputs:
+   - script writes `artifacts/launch-status.json` + `artifacts/launch-status.md`.
+   - writes markdown summary to `GITHUB_STEP_SUMMARY` when available.
+232. Added Launch Stability workflow:
+   - `.github/workflows/launch-stability.yml`
+   - schedule: hourly (`17 * * * *`) plus manual dispatch.
+   - uploads launch-status artifacts with `if: always()` so diagnostics persist on failure.
+233. Queue and gate docs updated:
+   - `docs/ROADMAP_QUEUE.md` marks `MILESTONE-LAUNCH-STABILITY-009` complete and promotes `MILESTONE-CATEGORY-SANITY-010`.
+   - `docs/LAUNCH_GATES.md` go-live checklist now requires successful Launch Stability workflow check.
+   - `docs/ISSUE_CHECKLIST.md` adds `QA-010` completed.
+234. Validation:
+   - `npm run check` => success.
+   - local strict 24h run intentionally returned non-ready due historical monitor gap/failure data (expected gate behavior).
+   - local short-window override run returned `overallReady=true`, validating success path and artifact generation.
