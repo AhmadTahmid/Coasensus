@@ -250,6 +250,19 @@ This file is the explicit handoff checkpoint.
    - local wrangler dry-run/deploy could not run because npm registry access for `wrangler` is blocked.
 46. Next action after pushing:
    - rely on GitHub CI + Deploy Cloudflare to run remote validation and apply migration `0005`, then verify staging/prod feed smoke with `region=US`.
+47. Region milestone promotion complete:
+   - merged to `main` as `1c4f5de`
+   - CI + Deploy Cloudflare succeeded (`22252557586`, `22252557594`).
+48. Staging parity completed:
+   - applied `0005_curated_feed_geo_tag.sql` to `coasensus-staging`
+   - deployed staging worker version `6e2cb160-ec74-4168-8f36-6dae70276a4e`.
+49. Region filter live verification:
+   - production + staging `GET /api/feed?...&region=US` both return `regionFilterApplied=true` with `geoTag` populated.
+50. Post-rollout monitors:
+   - production monitor `22252721036` success
+   - staging monitor `22252722052` success.
+51. Next recommended milestone:
+   - implement `MILESTONE-TREND-004` (trending-shift delta vs previous refresh + UI indicator).
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

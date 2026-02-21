@@ -456,3 +456,16 @@
    - `npm.cmd run lint` => success
    - `npm.cmd run check` blocked at test stage due sandbox process spawn restrictions (`vitest` `spawn EPERM`).
    - local `wrangler` dry-run/deploy not executable in this sandbox because npm registry access is blocked for fetching `wrangler`.
+168. Promoted region milestone to `main`:
+   - merged branch `agent/region-filter-pass1` as commit `1c4f5de`
+   - CI run `22252557586` => success
+   - Deploy Cloudflare run `22252557594` => success (production migration+deploy path).
+169. Completed staging rollout for region milestone:
+   - applied migration `0005_curated_feed_geo_tag.sql` on `coasensus-staging` via Wrangler
+   - deployed staging Worker version `6e2cb160-ec74-4168-8f36-6dae70276a4e`.
+170. Region filter smoke verification:
+   - production `GET /api/feed?...&region=US` => `200`, `regionFilterApplied=true`, first item `geoTag=US`, `totalItems=48`
+   - staging `GET /api/feed?...&region=US` => `200`, `regionFilterApplied=true`, first item `geoTag=US`, `totalItems=45`.
+171. Post-rollout monitor verification:
+   - production monitor `22252721036` => success (`totalItems=86`, `llmFailures=0`, runId `2026-02-21T07-15-27-694Z`)
+   - staging monitor `22252722052` => success (`totalItems=85`, `llmFailures=0`, runId `2026-02-21T07-22-35-107Z`).
