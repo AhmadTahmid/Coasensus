@@ -359,6 +359,17 @@ This file is the explicit handoff checkpoint.
    - `npm run check` passed after feed cache implementation.
 81. Next recommended milestone:
    - backlog complete for current queue; next work should be a new roadmap item or launch hardening pass.
+82. Perf milestone promotion complete:
+   - merged as `7063be1` (PR `#4`)
+   - CI `22253480745` + Deploy Cloudflare `22253480746` succeeded on `main`.
+83. Staging parity update for perf rollout:
+   - staging Worker was manually deployed to include feed-cache logic:
+     - version `a67ebce4-819f-4cf0-af00-33f099cbc0b1`.
+84. Cache behavior verification:
+   - production + staging `GET /api/feed?...` now return `X-Coasensus-Feed-Cache` with `HIT|MISS`, and `?cache=0` returns `BYPASS`.
+85. Post-rollout monitor confirmation:
+   - production monitor `22253534691` success
+   - staging monitor `22253534717` success.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

@@ -597,3 +597,19 @@
    - `docs/ISSUE_CHECKLIST.md` adds `QA-009` completed.
 216. Validation:
    - `npm run check` => success after feed cache implementation.
+217. Promoted perf milestone to `main`:
+   - merged PR `#4` as commit `7063be1`.
+218. Post-merge pipeline status:
+   - CI run `22253480745` => success
+   - Deploy Cloudflare run `22253480746` => success.
+219. Live cache-path verification:
+   - production `GET /api/feed?...` now returns `X-Coasensus-Feed-Cache: HIT|MISS` and `?cache=0` returns `BYPASS`.
+220. Staging parity follow-up:
+   - observed staging response initially missing cache header, indicating staging Worker version lag.
+   - deployed staging Worker manually via Wrangler:
+     - version `a67ebce4-819f-4cf0-af00-33f099cbc0b1`.
+221. Post-staging-deploy verification:
+   - staging `GET /api/feed?...` now returns `X-Coasensus-Feed-Cache: MISS` then `HIT`; `?cache=0` returns `BYPASS`.
+222. Post-rollout monitor verification:
+   - production monitor `22253534691` => success
+   - staging monitor `22253534717` => success.
