@@ -576,3 +576,24 @@
 208. Post-merge monitor verification on `main`:
    - production monitor `22253372672` => success
    - staging monitor `22253372673` => success.
+209. Started `MILESTONE-PERF-008` on branch `agent/perf-pass1`.
+210. Added cached feed query path in Worker (`infra/cloudflare/workers/feed-api/src/index.ts`):
+   - `/api/feed` now checks Worker Cache API before querying D1.
+   - canonical cache key built from normalized feed params (`page`, `pageSize`, `sort`, `category`, `region`, `q`, `includeRejected`).
+   - cache write occurs asynchronously via `ctx.waitUntil(...)`.
+211. Added feed cache controls + observability:
+   - env vars: `COASENSUS_FEED_CACHE_ENABLED`, `COASENSUS_FEED_CACHE_TTL_SECONDS`.
+   - response header `X-Coasensus-Feed-Cache` reports `HIT|MISS|BYPASS`.
+   - request bypass supported via `?cache=0`.
+212. Added resilience guards:
+   - cache read/write failures are logged and gracefully fall back to direct D1 query path.
+213. Synced deploy configs to avoid runtime drift:
+   - added feed-cache vars to `infra/cloudflare/wrangler.api.jsonc` (root + staging + production).
+   - mirrored the same vars in `infra/cloudflare/wrangler.api.ci.jsonc`.
+214. Updated Worker docs:
+   - `infra/cloudflare/workers/feed-api/README.md` now documents feed burst cache settings and bypass behavior.
+215. Milestone bookkeeping updated:
+   - `docs/ROADMAP_QUEUE.md` marks `MILESTONE-PERF-008` complete.
+   - `docs/ISSUE_CHECKLIST.md` adds `QA-009` completed.
+216. Validation:
+   - `npm run check` => success after feed cache implementation.

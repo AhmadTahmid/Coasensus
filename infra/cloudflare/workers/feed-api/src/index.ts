@@ -22,6 +22,8 @@ interface Env {
   COASENSUS_DEFAULT_PAGE_SIZE?: string;
   COASENSUS_ADMIN_REFRESH_TOKEN?: string;
   COASENSUS_AUTO_REFRESH_ON_EMPTY?: string;
+  COASENSUS_FEED_CACHE_ENABLED?: string;
+  COASENSUS_FEED_CACHE_TTL_SECONDS?: string;
   POLYMARKET_BASE_URL?: string;
   COASENSUS_INGEST_LIMIT_PER_PAGE?: string;
   COASENSUS_INGEST_MAX_PAGES?: string;
@@ -359,6 +361,59 @@ function autoRefreshOnEmptyEnabled(env: Env): boolean {
   return env.COASENSUS_AUTO_REFRESH_ON_EMPTY !== "0";
 }
 
+function feedCacheEnabled(env: Env): boolean {
+  return env.COASENSUS_FEED_CACHE_ENABLED !== "0";
+}
+
+function feedCacheTtlSeconds(env: Env): number {
+  return asPositiveInt(env.COASENSUS_FEED_CACHE_TTL_SECONDS ?? null, 45, 5, 600);
+}
+
+function buildFeedCacheKey(
+  requestUrl: URL,
+  params: {
+    page: number;
+    pageSize: number;
+    sort: FeedSort;
+    category: MarketCategory | null;
+    region: GeoTag | null;
+    searchQuery: string | null;
+    includeRejected: boolean;
+  }
+): Request {
+  const cacheUrl = new URL("/api/feed", requestUrl.origin);
+  const cacheParams = new URLSearchParams();
+  cacheParams.set("page", String(params.page));
+  cacheParams.set("pageSize", String(params.pageSize));
+  cacheParams.set("sort", params.sort);
+  if (params.category) {
+    cacheParams.set("category", params.category);
+  }
+  if (params.region) {
+    cacheParams.set("region", params.region);
+  }
+  if (params.searchQuery) {
+    cacheParams.set("q", params.searchQuery);
+  }
+  if (params.includeRejected) {
+    cacheParams.set("includeRejected", "1");
+  }
+  cacheUrl.search = cacheParams.toString();
+  return new Request(cacheUrl.toString(), { method: "GET" });
+}
+
+function withFeedCacheHeaders(response: Response, cacheStatus: "HIT" | "MISS" | "BYPASS", ttlSeconds?: number): Response {
+  const headers = new Headers(response.headers);
+  headers.set("X-Coasensus-Feed-Cache", cacheStatus);
+  if (typeof ttlSeconds === "number" && Number.isFinite(ttlSeconds) && ttlSeconds > 0) {
+    headers.set("Cache-Control", `public, max-age=${Math.floor(ttlSeconds)}`);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    headers,
+  });
+}
+
 function hasRefreshAccess(request: Request, url: URL, env: Env): boolean {
   const expectedToken = env.COASENSUS_ADMIN_REFRESH_TOKEN?.trim();
   if (!expectedToken) {
@@ -386,7 +441,7 @@ function hasRefreshAccess(request: Request, url: URL, env: Env): boolean {
   return false;
 }
 
-async function handleFeed(url: URL, env: Env, origin: string): Promise<Response> {
+async function handleFeed(request: Request, url: URL, env: Env, origin: string, ctx: ExecutionContext): Promise<Response> {
   try {
     const page = asPositiveInt(url.searchParams.get("page"), 1, 1, 10_000);
     const pageSize = asPositiveInt(url.searchParams.get("pageSize"), defaultPageSize(env), 1, 100);
@@ -395,6 +450,30 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
     const region = asGeoTag(url.searchParams.get("region") ?? url.searchParams.get("geoTag"));
     const searchQuery = asSearchQuery(url.searchParams.get("q") ?? url.searchParams.get("search"));
     const includeRejected = url.searchParams.get("includeRejected") === "1";
+    const cacheBypass = url.searchParams.get("cache") === "0";
+    const cacheEnabled = request.method === "GET" && feedCacheEnabled(env) && !cacheBypass;
+    const cacheTtlSeconds = feedCacheTtlSeconds(env);
+    const cacheKey = buildFeedCacheKey(url, {
+      page,
+      pageSize,
+      sort,
+      category,
+      region,
+      searchQuery,
+      includeRejected,
+    });
+
+    if (cacheEnabled) {
+      try {
+        const cached = await caches.default.match(cacheKey);
+        if (cached) {
+          return withFeedCacheHeaders(cached, "HIT", cacheTtlSeconds);
+        }
+      } catch (error) {
+        console.error("Feed cache lookup failed", asErrorMessage(error));
+      }
+    }
+
     const hasFrontPageScore = await curatedFeedHasColumn(env.DB, "front_page_score");
     const hasGeoTag = await curatedFeedHasColumn(env.DB, "geo_tag");
     const hasTrendDelta = await curatedFeedHasColumn(env.DB, "trend_delta");
@@ -508,7 +587,7 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
       trendDelta: toNumberOrNull(row.trend_delta),
     }));
 
-    return json(
+    const response = json(
       200,
       {
         meta: {
@@ -535,6 +614,17 @@ async function handleFeed(url: URL, env: Env, origin: string): Promise<Response>
       },
       origin
     );
+    if (!cacheEnabled) {
+      return withFeedCacheHeaders(response, "BYPASS");
+    }
+
+    const cacheableResponse = withFeedCacheHeaders(response, "MISS", cacheTtlSeconds);
+    ctx.waitUntil(
+      caches.default.put(cacheKey, cacheableResponse.clone()).catch((error) => {
+        console.error("Feed cache write failed", asErrorMessage(error));
+      })
+    );
+    return cacheableResponse;
   } catch (error) {
     return json(
       503,
@@ -1028,7 +1118,7 @@ export default {
     }
 
     if (pathname === "/feed" && request.method === "GET") {
-      return handleFeed(url, env, origin);
+      return handleFeed(request, url, env, origin, ctx);
     }
 
     if (pathname === "/admin/refresh-feed" && request.method === "POST") {

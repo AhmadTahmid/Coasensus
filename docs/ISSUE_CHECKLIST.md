@@ -46,6 +46,7 @@
 - [x] `QA-006` Add explicit monitor alerts for stale feed and semantic failure streaks
 - [x] `QA-007` Add per-session analytics rate limiting and sampling on web client
 - [x] `QA-008` Add region/category taxonomy distribution to admin feed diagnostics
+- [x] `QA-009` Add cached feed query path for burst traffic on `/api/feed`
 
 ## EPIC-06 Hybrid Semantic Layer (Execution Plan V2)
 - [x] `SEM-001` Add phase-1 bouncer prefilter (query + local gates)

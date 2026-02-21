@@ -344,6 +344,21 @@ This file is the explicit handoff checkpoint.
 76. Post-merge monitor confirmation:
    - production monitor `22253372672` success
    - staging monitor `22253372673` success.
+77. Perf milestone implementation (`MILESTONE-PERF-008`) completed on `agent/perf-pass1`:
+   - added Worker Cache API path for `GET /api/feed` with canonicalized query cache keys.
+   - cache policy is env-controlled:
+     - `COASENSUS_FEED_CACHE_ENABLED` (default `1`)
+     - `COASENSUS_FEED_CACHE_TTL_SECONDS` (default `45`)
+   - optional client bypass for debugging: `?cache=0`.
+78. Feed cache observability:
+   - response header `X-Coasensus-Feed-Cache` now returns `HIT`, `MISS`, or `BYPASS`.
+   - cache lookup/write failures are logged but do not fail feed reads.
+79. Config parity updates:
+   - added feed-cache vars to both `wrangler.api.jsonc` and `wrangler.api.ci.jsonc` (root + staging + production blocks) to prevent deploy drift.
+80. Validation:
+   - `npm run check` passed after feed cache implementation.
+81. Next recommended milestone:
+   - backlog complete for current queue; next work should be a new roadmap item or launch hardening pass.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
