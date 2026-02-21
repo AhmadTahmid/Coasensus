@@ -16,6 +16,9 @@ const CATEGORY_SET = new Set<MarketCategory>([
   "geopolitics",
   "public_health",
   "climate_energy",
+  "tech_ai",
+  "sports",
+  "entertainment",
   "other",
 ]);
 
@@ -59,6 +62,10 @@ function scoreValue(item: CuratedFeedItem): number {
   return item.score.civicScore + item.score.newsworthinessScore;
 }
 
+function tieBreakById(a: CuratedFeedItem, b: CuratedFeedItem): number {
+  return a.id.localeCompare(b.id);
+}
+
 function dateValue(item: CuratedFeedItem): number {
   if (!item.endDate) {
     return Number.POSITIVE_INFINITY;
@@ -71,20 +78,20 @@ function sortItems(items: CuratedFeedItem[], sort: FeedSort): CuratedFeedItem[] 
   const copy = [...items];
 
   if (sort === "volume") {
-    copy.sort((a, b) => (b.volume ?? -1) - (a.volume ?? -1));
+    copy.sort((a, b) => (b.volume ?? -1) - (a.volume ?? -1) || tieBreakById(a, b));
     return copy;
   }
   if (sort === "liquidity") {
-    copy.sort((a, b) => (b.liquidity ?? -1) - (a.liquidity ?? -1));
+    copy.sort((a, b) => (b.liquidity ?? -1) - (a.liquidity ?? -1) || tieBreakById(a, b));
     return copy;
   }
   if (sort === "endDate") {
-    copy.sort((a, b) => dateValue(a) - dateValue(b));
+    copy.sort((a, b) => dateValue(a) - dateValue(b) || tieBreakById(a, b));
     return copy;
   }
 
   // score sort is default for relevance.
-  copy.sort((a, b) => scoreValue(b) - scoreValue(a));
+  copy.sort((a, b) => scoreValue(b) - scoreValue(a) || tieBreakById(a, b));
   return copy;
 }
 
