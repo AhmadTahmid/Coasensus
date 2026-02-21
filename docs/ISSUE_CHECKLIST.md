@@ -45,6 +45,7 @@
 - [x] `QA-005` Define launch gate criteria
 - [x] `QA-006` Add explicit monitor alerts for stale feed and semantic failure streaks
 - [x] `QA-007` Add per-session analytics rate limiting and sampling on web client
+- [x] `QA-008` Add region/category taxonomy distribution to admin feed diagnostics
 
 ## EPIC-06 Hybrid Semantic Layer (Execution Plan V2)
 - [x] `SEM-001` Add phase-1 bouncer prefilter (query + local gates)

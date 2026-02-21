@@ -550,3 +550,21 @@
 198. Post-merge monitor verification on `main`:
    - production monitor `22253244279` => success
    - staging monitor `22253244294` => success.
+199. Started `MILESTONE-TAXONOMY-007` on branch `agent/taxonomy-pass1`.
+200. Expanded admin feed diagnostics taxonomy output in `infra/cloudflare/workers/feed-api/src/index.ts`:
+   - added regional split query (`regionCounts`) using `geo_tag`.
+   - added region x category split query (`regionCategoryDistribution`).
+   - added composite `taxonomyPanel` block with `regions`, `categories`, and `regionCategory` arrays.
+201. Added normalized diagnostics ratios:
+   - category rows now include `shareOfFeed` + `curatedShareWithinCategory`.
+   - region rows now include `shareOfFeed` + `curatedShareWithinRegion`.
+   - region/category rows now include `shareWithinRegion` + `shareOfFeed`.
+202. Added compatibility fallback for environments missing `geo_tag`:
+   - diagnostics synthesize a `World` region panel from existing totals.
+203. Updated Worker docs:
+   - `infra/cloudflare/workers/feed-api/README.md` route list now includes `GET /api/admin/feed-diagnostics`.
+204. Milestone bookkeeping updated:
+   - `docs/ROADMAP_QUEUE.md` marks `MILESTONE-TAXONOMY-007` complete and promotes `MILESTONE-PERF-008` as active.
+   - `docs/ISSUE_CHECKLIST.md` adds `QA-008` completed.
+205. Validation:
+   - `npm run check` => success after taxonomy diagnostics implementation.

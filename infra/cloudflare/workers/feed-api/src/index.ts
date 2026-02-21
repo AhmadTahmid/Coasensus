@@ -128,6 +128,19 @@ interface FeedDiagnosticsCategoryRow {
   rejected: number;
 }
 
+interface FeedDiagnosticsRegionRow {
+  region: string | null;
+  curated: number;
+  rejected: number;
+}
+
+interface FeedDiagnosticsRegionCategoryRow {
+  region: string | null;
+  category: string | null;
+  curated: number;
+  rejected: number;
+}
+
 interface FeedDiagnosticsDecisionReasonRow {
   decision_reason: string | null;
   count: number;
@@ -259,6 +272,13 @@ function toCategory(value: string): MarketCategory {
 function toNumberOrNull(value: unknown): number | null {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function toRatioOrNull(numerator: number, denominator: number): number | null {
+  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) {
+    return null;
+  }
+  return Number((numerator / denominator).toFixed(4));
 }
 
 function parseReasonCodes(value: string | null): string[] {
@@ -570,6 +590,7 @@ async function handleFeedDiagnostics(
   }
 
   try {
+    const hasGeoTag = await curatedFeedHasColumn(env.DB, "geo_tag");
     const countsQuery = `
       SELECT
         COUNT(*) AS total,
@@ -588,6 +609,29 @@ async function handleFeedDiagnostics(
       ORDER BY (curated + rejected) DESC, category ASC
     `;
 
+    const regionCountsQuery = `
+      SELECT
+        COALESCE(NULLIF(TRIM(geo_tag), ''), 'World') AS region,
+        SUM(CASE WHEN is_curated = 1 THEN 1 ELSE 0 END) AS curated,
+        SUM(CASE WHEN is_curated = 0 THEN 1 ELSE 0 END) AS rejected
+      FROM curated_feed
+      GROUP BY COALESCE(NULLIF(TRIM(geo_tag), ''), 'World')
+      ORDER BY (curated + rejected) DESC, region ASC
+    `;
+
+    const regionCategoryCountsQuery = `
+      SELECT
+        COALESCE(NULLIF(TRIM(geo_tag), ''), 'World') AS region,
+        COALESCE(NULLIF(TRIM(category), ''), 'other') AS category,
+        SUM(CASE WHEN is_curated = 1 THEN 1 ELSE 0 END) AS curated,
+        SUM(CASE WHEN is_curated = 0 THEN 1 ELSE 0 END) AS rejected
+      FROM curated_feed
+      GROUP BY
+        COALESCE(NULLIF(TRIM(geo_tag), ''), 'World'),
+        COALESCE(NULLIF(TRIM(category), ''), 'other')
+      ORDER BY region ASC, (curated + rejected) DESC, category ASC
+    `;
+
     const topDecisionReasonsQuery = `
       SELECT
         COALESCE(NULLIF(TRIM(decision_reason), ''), 'unknown') AS decision_reason,
@@ -604,6 +648,12 @@ async function handleFeedDiagnostics(
       env.DB.prepare(topDecisionReasonsQuery).all<FeedDiagnosticsDecisionReasonRow>(),
       env.DB.prepare("SELECT reason_codes_json FROM curated_feed").all<FeedDiagnosticsReasonCodesRow>(),
     ]);
+    const [regionRows, regionCategoryRows] = hasGeoTag
+      ? await Promise.all([
+          env.DB.prepare(regionCountsQuery).all<FeedDiagnosticsRegionRow>(),
+          env.DB.prepare(regionCategoryCountsQuery).all<FeedDiagnosticsRegionCategoryRow>(),
+        ])
+      : [null, null];
 
     const counts = {
       total: Number(countsRow?.total ?? 0),
@@ -631,8 +681,85 @@ async function handleFeedDiagnostics(
         curated: value.curated,
         rejected: value.rejected,
         total: value.curated + value.rejected,
+        shareOfFeed: toRatioOrNull(value.curated + value.rejected, counts.total),
+        curatedShareWithinCategory: toRatioOrNull(value.curated, value.curated + value.rejected),
       }))
       .sort((a, b) => b.total - a.total || a.category.localeCompare(b.category));
+
+    const regionTotals = new Map<GeoTag, { curated: number; rejected: number }>();
+    if (hasGeoTag) {
+      for (const row of regionRows?.results ?? []) {
+        const region = toGeoTag(row.region);
+        const curated = Number(row.curated ?? 0);
+        const rejected = Number(row.rejected ?? 0);
+        const current = regionTotals.get(region);
+        if (current) {
+          current.curated += curated;
+          current.rejected += rejected;
+        } else {
+          regionTotals.set(region, { curated, rejected });
+        }
+      }
+    } else {
+      regionTotals.set("World", { curated: counts.curated, rejected: counts.rejected });
+    }
+
+    const regionCounts = [...regionTotals.entries()]
+      .map(([region, value]) => ({
+        region,
+        curated: value.curated,
+        rejected: value.rejected,
+        total: value.curated + value.rejected,
+        shareOfFeed: toRatioOrNull(value.curated + value.rejected, counts.total),
+        curatedShareWithinRegion: toRatioOrNull(value.curated, value.curated + value.rejected),
+      }))
+      .sort((a, b) => b.total - a.total || a.region.localeCompare(b.region));
+
+    const regionTotalByTag = new Map<GeoTag, number>(
+      regionCounts.map((row) => [row.region, row.total] as const)
+    );
+
+    const regionCategoryTotals = new Map<string, { region: GeoTag; category: MarketCategory; curated: number; rejected: number }>();
+    if (hasGeoTag) {
+      for (const row of regionCategoryRows?.results ?? []) {
+        const region = toGeoTag(row.region);
+        const category = toCategory((row.category ?? "other").trim());
+        const curated = Number(row.curated ?? 0);
+        const rejected = Number(row.rejected ?? 0);
+        const key = `${region}::${category}`;
+        const current = regionCategoryTotals.get(key);
+        if (current) {
+          current.curated += curated;
+          current.rejected += rejected;
+        } else {
+          regionCategoryTotals.set(key, { region, category, curated, rejected });
+        }
+      }
+    } else {
+      for (const category of categoryCounts) {
+        regionCategoryTotals.set(`World::${category.category}`, {
+          region: "World",
+          category: category.category,
+          curated: category.curated,
+          rejected: category.rejected,
+        });
+      }
+    }
+
+    const regionCategoryDistribution = [...regionCategoryTotals.values()]
+      .map((entry) => {
+        const total = entry.curated + entry.rejected;
+        return {
+          region: entry.region,
+          category: entry.category,
+          curated: entry.curated,
+          rejected: entry.rejected,
+          total,
+          shareWithinRegion: toRatioOrNull(total, regionTotalByTag.get(entry.region) ?? 0),
+          shareOfFeed: toRatioOrNull(total, counts.total),
+        };
+      })
+      .sort((a, b) => a.region.localeCompare(b.region) || b.total - a.total || a.category.localeCompare(b.category));
 
     const topDecisionReasons = (decisionReasonRows.results ?? []).map((row) => ({
       decisionReason: (row.decision_reason ?? "unknown").trim() || "unknown",
@@ -660,6 +787,14 @@ async function handleFeedDiagnostics(
       {
         counts,
         categoryCounts,
+        regionCounts,
+        regionCategoryDistribution,
+        taxonomyPanel: {
+          hasGeoTag,
+          regions: regionCounts,
+          categories: categoryCounts,
+          regionCategory: regionCategoryDistribution,
+        },
         topDecisionReasons,
         topReasonCodes,
         generatedAt: new Date().toISOString(),
