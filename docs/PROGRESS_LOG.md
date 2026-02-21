@@ -790,3 +790,14 @@
 275. Validation:
    - `node --check apps/web/public/admin.js` => success.
    - `npm run check` => success after dashboard implementation.
+276. Promoted `MILESTONE-DASHBOARD-012` to `main`:
+   - merged PR `#9` as commit `546f336`.
+277. Post-merge pipeline status:
+   - CI run `22254704657` => success.
+   - Deploy Cloudflare run `22254704647` => success.
+278. Dashboard route smoke verification:
+   - `curl -L https://coasensus.com/admin.html` returned content containing "Read-only diagnostics dashboard".
+279. Post-rollout workflow verification:
+   - Editorial Spotcheck `22254731284` => success.
+   - Monitor Production `22254729697` => success.
+   - Monitor Staging `22254729796` => success.

@@ -523,6 +523,17 @@ This file is the explicit handoff checkpoint.
 130. Validation (local):
    - `node --check apps/web/public/admin.js` passed.
    - `npm run check` passed after dashboard implementation.
+131. Dashboard milestone promotion:
+   - merged PR `#9` to `main` as commit `546f336`.
+132. Post-merge pipeline status:
+   - CI `22254704657` success.
+   - Deploy Cloudflare `22254704647` success.
+133. Dashboard smoke verification:
+   - production route `https://coasensus.com/admin.html` confirmed live (`curl -L` content check matched "Read-only diagnostics dashboard").
+134. Post-rollout workflow verification:
+   - Editorial Spotcheck `22254731284` success.
+   - Monitor Production `22254729697` success.
+   - Monitor Staging `22254729796` success.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
