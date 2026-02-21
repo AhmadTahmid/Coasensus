@@ -613,3 +613,13 @@
 222. Post-rollout monitor verification:
    - production monitor `22253534691` => success
    - staging monitor `22253534717` => success.
+223. Synced execution-plan status:
+   - updated `docs/EXECUTION_PLAN_V2.md` checklist state to reflect implemented milestones vs pending polish/ops items.
+224. Added post-V2 backlog planning doc:
+   - created `docs/POST_V2_BACKLOG.md` with prioritized milestones and acceptance criteria:
+     - `MILESTONE-LAUNCH-STABILITY-009`
+     - `MILESTONE-CATEGORY-SANITY-010`
+     - `MILESTONE-EDITORIAL-SPOTCHECK-011`
+     - `MILESTONE-DASHBOARD-012`.
+225. Re-opened active queue after V2 completion:
+   - updated `docs/ROADMAP_QUEUE.md` to set `MILESTONE-LAUNCH-STABILITY-009` as active and staged next three milestones.

@@ -246,40 +246,42 @@ Cost Management & Refresh Cadence: Batch LLM calls and choose token-efficient mo
 
 ## 8. Milestones & Next Steps
 
+Status sync note (February 21, 2026): this checklist has been updated to match shipped repository state and deployed milestones.
+
 Setup & Configuration
 
-- [ ] Define configuration parameters: volume/liquidity thresholds, date filters, LLM model & API keys, ranking weights.
-- [ ] Create or update database tables to store enriched market metadata.
-- [ ] Design and provision a caching layer (e.g., SQLite, Postgres, or Redis) to store LLM outputs keyed by market ID. Ensure the cache includes fields for market ID, newsworthiness score, category, geo tag, is_meme flag, and timestamp of last update.
+- [x] Define configuration parameters: volume/liquidity thresholds, date filters, LLM model & API keys, ranking weights.
+- [x] Create or update database tables to store enriched market metadata.
+- [x] Design and provision a caching layer (e.g., SQLite, Postgres, or Redis) to store LLM outputs keyed by market ID. Ensure the cache includes fields for market ID, newsworthiness score, category, geo tag, is_meme flag, and timestamp of last update.
 Pre-filter Implementation
 
-- [ ] Implement a client to call Polymarket's listMarkets with numeric filters[2].
-- [ ] Integrate the pre-filter into the ingestion worker; persist results.
-- [ ] Write unit tests to ensure markets below thresholds are dropped.
+- [x] Implement a client to call Polymarket's listMarkets with numeric filters[2].
+- [x] Integrate the pre-filter into the ingestion worker; persist results.
+- [x] Write unit tests to ensure markets below thresholds are dropped.
 LLM Service
 
-- [ ] Define the JSON schema for the LLM output using Pydantic or Zod.
-- [ ] Implement the LLM calling service with batch support, JSON mode, and schema validation.
-- [ ] Add fallback logic for invalid outputs and metrics logging.
-- [ ] Implement caching logic: before invoking the LLM, check if a market's ID exists in the cache. If present, skip the LLM call and update only financial metrics; otherwise, call the LLM and cache the result.
+- [x] Define the JSON schema for the LLM output using Pydantic or Zod.
+- [x] Implement the LLM calling service with batch support, JSON mode, and schema validation.
+- [x] Add fallback logic for invalid outputs and metrics logging.
+- [x] Implement caching logic: before invoking the LLM, check if a market's ID exists in the cache. If present, skip the LLM call and update only financial metrics; otherwise, call the LLM and cache the result.
 Ranking Algorithm
 
-- [ ] Implement the front-page scoring function using the proposed formula.
-- [ ] Add configuration for weights and decay parameter; provide default values.
+- [x] Implement the front-page scoring function using the proposed formula.
+- [x] Add configuration for weights and decay parameter; provide default values.
 - [ ] Write tests to verify ranking ordering and evaluate edge cases.
-- [ ] Add a method to compute trending shifts (percentage change since last refresh) and integrate it into ranking or optional UI elements.
+- [x] Add a method to compute trending shifts (percentage change since last refresh) and integrate it into ranking or optional UI elements.
 UI & API Integration
 
-- [ ] Modify the existing feed-store to consume enriched market data and use front_page_score instead of the legacy civic/newsworthiness sum.
-- [ ] Update API endpoints and front-end components to display categories and regions.
-- [ ] Implement search and filter controls in the UI.
+- [x] Modify the existing feed-store to consume enriched market data and use front_page_score instead of the legacy civic/newsworthiness sum.
+- [x] Update API endpoints and front-end components to display categories and regions.
+- [x] Implement search and filter controls in the UI.
 - [ ] Build the masonry grid layout using CSS columns. Ensure it is responsive (3-4 columns on desktop; single column on mobile) and supports a page-turn animation at the end of each tab.
 - [ ] Develop the news card component with headline, probability, context hook, deadline, and volume fields. Add support for optional images/icons and colour-coded probabilities.
 - [ ] Implement optional UX features: trending shift arrows, hero card spanning multiple columns, category icons/emojis.
 - [ ] Expose configuration flags on the backend to enable or disable these features without redeploying the front end.
 Monitoring & Evaluation
 
-- [ ] Instrument metrics (pre-filter drop count, LLM classification distribution, ranking outcomes).
+- [x] Instrument metrics (pre-filter drop count, LLM classification distribution, ranking outcomes).
 - [ ] Deploy dashboards and alerts.
 - [ ] Conduct manual reviews of random samples to refine prompts and weights.
 - [ ] Monitor cache hit/miss ratios and LLM call frequency to ensure cost savings from caching. Set alerts if the cache is bypassed unexpectedly.

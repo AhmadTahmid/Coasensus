@@ -370,6 +370,13 @@ This file is the explicit handoff checkpoint.
 85. Post-rollout monitor confirmation:
    - production monitor `22253534691` success
    - staging monitor `22253534717` success.
+86. Execution-plan status sync completed:
+   - `docs/EXECUTION_PLAN_V2.md` checklist now reflects shipped work and remaining optional/post-launch items.
+87. New planning artifact added:
+   - `docs/POST_V2_BACKLOG.md` defines post-V2 milestone order + acceptance criteria.
+88. Queue reopened after V2 completion:
+   - `docs/ROADMAP_QUEUE.md` now sets `MILESTONE-LAUNCH-STABILITY-009` as active.
+   - next queued: `MILESTONE-CATEGORY-SANITY-010`, `MILESTONE-EDITORIAL-SPOTCHECK-011`, `MILESTONE-DASHBOARD-012`.
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`
