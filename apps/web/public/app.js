@@ -33,6 +33,70 @@ function resolveApiBase() {
 
 const API_BASE = resolveApiBase();
 const SESSION_KEY = "coasensus_session_id";
+const ANALYTICS_STATE_KEY = "coasensus_analytics_state_v1";
+const ANALYTICS_MAX_EVENTS_PER_SESSION = 160;
+const DEFAULT_ANALYTICS_RULE = Object.freeze({
+  sampleRate: 1,
+  minIntervalMs: 0,
+  maxPerSession: 40,
+});
+const ANALYTICS_RULES = Object.freeze({
+  page_view: Object.freeze({
+    sampleRate: 1,
+    minIntervalMs: 0,
+    maxPerSession: 1,
+  }),
+  feed_loaded: Object.freeze({
+    sampleRate: 0.4,
+    minIntervalMs: 60_000,
+    maxPerSession: 24,
+  }),
+  search_changed: Object.freeze({
+    sampleRate: 1,
+    minIntervalMs: 1_200,
+    maxPerSession: 40,
+  }),
+  sort_changed: Object.freeze({
+    sampleRate: 1,
+    minIntervalMs: 1_200,
+    maxPerSession: 40,
+  }),
+  category_changed: Object.freeze({
+    sampleRate: 1,
+    minIntervalMs: 1_200,
+    maxPerSession: 40,
+  }),
+  region_changed: Object.freeze({
+    sampleRate: 1,
+    minIntervalMs: 1_200,
+    maxPerSession: 40,
+  }),
+  include_rejected_toggled: Object.freeze({
+    sampleRate: 1,
+    minIntervalMs: 1_200,
+    maxPerSession: 20,
+  }),
+  refresh_clicked: Object.freeze({
+    sampleRate: 1,
+    minIntervalMs: 3_000,
+    maxPerSession: 30,
+  }),
+  pagination_previous: Object.freeze({
+    sampleRate: 0.5,
+    minIntervalMs: 2_000,
+    maxPerSession: 36,
+  }),
+  pagination_next: Object.freeze({
+    sampleRate: 0.5,
+    minIntervalMs: 2_000,
+    maxPerSession: 36,
+  }),
+  market_clicked: Object.freeze({
+    sampleRate: 1,
+    minIntervalMs: 700,
+    maxPerSession: 120,
+  }),
+});
 let trackedInitialView = false;
 
 const el = {
@@ -66,14 +130,130 @@ function getSessionId() {
 }
 
 const sessionId = getSessionId();
+let analyticsState = loadAnalyticsState();
+
+function createEmptyAnalyticsState() {
+  return {
+    sessionId,
+    totalSent: 0,
+    events: {},
+  };
+}
+
+function loadAnalyticsState() {
+  const fallback = createEmptyAnalyticsState();
+  try {
+    const raw = window.localStorage.getItem(ANALYTICS_STATE_KEY);
+    if (!raw) {
+      return fallback;
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return fallback;
+    }
+    if (parsed.sessionId !== sessionId) {
+      return fallback;
+    }
+
+    const totalSentRaw = Number(parsed.totalSent);
+    const totalSent = Number.isFinite(totalSentRaw) && totalSentRaw > 0 ? Math.floor(totalSentRaw) : 0;
+    const events = {};
+    const parsedEvents =
+      parsed.events && typeof parsed.events === "object" && !Array.isArray(parsed.events) ? parsed.events : {};
+
+    for (const [eventName, stats] of Object.entries(parsedEvents)) {
+      if (!eventName || !stats || typeof stats !== "object") {
+        continue;
+      }
+      const sentRaw = Number(stats.sent);
+      const lastSentAtRaw = Number(stats.lastSentAt);
+      events[eventName] = {
+        sent: Number.isFinite(sentRaw) && sentRaw > 0 ? Math.floor(sentRaw) : 0,
+        lastSentAt: Number.isFinite(lastSentAtRaw) && lastSentAtRaw > 0 ? Math.floor(lastSentAtRaw) : 0,
+      };
+    }
+
+    return {
+      sessionId,
+      totalSent,
+      events,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function persistAnalyticsState() {
+  try {
+    window.localStorage.setItem(ANALYTICS_STATE_KEY, JSON.stringify(analyticsState));
+  } catch {
+    // Ignore storage write failures (private mode/storage disabled).
+  }
+}
+
+function normalizeDetails(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return value;
+}
+
+function getAnalyticsRule(eventName) {
+  return ANALYTICS_RULES[eventName] || DEFAULT_ANALYTICS_RULE;
+}
+
+function shouldSample(sampleRate) {
+  if (sampleRate >= 1) return true;
+  if (sampleRate <= 0) return false;
+  return Math.random() < sampleRate;
+}
+
+function shouldTrackEvent(eventName) {
+  const now = Date.now();
+  const rule = getAnalyticsRule(eventName);
+  const eventStats = analyticsState.events[eventName] || { sent: 0, lastSentAt: 0 };
+
+  if (analyticsState.totalSent >= ANALYTICS_MAX_EVENTS_PER_SESSION) {
+    return { allowed: false, rule };
+  }
+  if (eventStats.sent >= rule.maxPerSession) {
+    return { allowed: false, rule };
+  }
+  if (rule.minIntervalMs > 0 && eventStats.lastSentAt > 0 && now - eventStats.lastSentAt < rule.minIntervalMs) {
+    return { allowed: false, rule };
+  }
+  if (!shouldSample(rule.sampleRate)) {
+    return { allowed: false, rule };
+  }
+
+  analyticsState.events[eventName] = {
+    sent: eventStats.sent + 1,
+    lastSentAt: now,
+  };
+  analyticsState.totalSent += 1;
+  persistAnalyticsState();
+
+  return { allowed: true, rule };
+}
 
 function track(event, details = {}) {
+  const decision = shouldTrackEvent(event);
+  if (!decision.allowed) {
+    return;
+  }
+
+  const safeDetails = { ...normalizeDetails(details) };
+  if (decision.rule.sampleRate < 1) {
+    safeDetails.analyticsSampleRate = decision.rule.sampleRate;
+  }
+
   const payload = {
     event,
     source: "web",
     sessionId,
     pageUrl: window.location.href,
-    details,
+    details: safeDetails,
   };
 
   const body = JSON.stringify(payload);

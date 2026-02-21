@@ -16,4 +16,4 @@ Local frontend for the Coasensus feed/cards experience.
 3. On `*.coasensus-web.pages.dev`, the app auto-targets the matching `workers.dev` API endpoint.
 4. Use controls to search by market text, sort (including trending up), filter by category/region, and include rejected markets.
 5. The UI is mobile/desktop responsive and card-based.
-6. Basic analytics events are sent to `/analytics` on the selected API base.
+6. Analytics events are sent to `/analytics` on the selected API base with per-session rate limiting and sampling (to reduce noisy writes).
