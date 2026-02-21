@@ -277,6 +277,16 @@ This file is the explicit handoff checkpoint.
    - worker dry-run deploy for staging passed.
 55. Next recommended milestone:
    - implement `MILESTONE-ALERT-005` (explicit alerts for repeated semantic failures and stale feed).
+56. Trend milestone promotion complete:
+   - merged to `main` as `cc06189`
+   - CI + Deploy Cloudflare succeeded (`22252881208`, `22252881209`).
+57. Trend endpoint live verification:
+   - production + staging `GET /api/feed?...&sort=trend` both return `trendSortAvailable=true` and `requestedSort=trend`.
+58. Post-rollout monitor health:
+   - production monitor `22252904455` success
+   - staging monitor `22252905034` success.
+59. Next recommended milestone:
+   - implement `MILESTONE-ALERT-005` (alerting for stale feed / repeated semantic failures).
 
 ## How to start a fresh Codex session
 1. Open terminal in repo: `E:\Coasensus Predictive future`

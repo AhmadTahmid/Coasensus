@@ -493,3 +493,13 @@
 179. Staging trend smoke checks:
    - `GET /api/feed?...&sort=trend` => `200`, `sort=trend`, `requestedSort=trend`, `trendSortAvailable=true`
    - `GET /api/feed?...&sort=trend&region=US` => `200`, region filter and geo tags still valid.
+180. Promoted trend milestone to `main`:
+   - merged branch `agent/trend-shift-pass1` as commit `cc06189`
+   - CI run `22252881208` => success
+   - Deploy Cloudflare run `22252881209` => success.
+181. Production + staging trend verification:
+   - production `GET /api/feed?...&sort=trend` => `200`, `trendSortAvailable=true`, `requestedSort=trend`
+   - staging `GET /api/feed?...&sort=trend` => `200`, `trendSortAvailable=true`, `requestedSort=trend`.
+182. Post-rollout monitors for trend milestone:
+   - production monitor `22252904455` => success (`totalItems=86`, `llmFailures=0`, runId `2026-02-21T07-30-28-219Z`)
+   - staging monitor `22252905034` => success (`totalItems=85`, `llmFailures=0`, runId `2026-02-21T07-30-27-972Z`).
