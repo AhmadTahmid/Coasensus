@@ -49,4 +49,5 @@ This document defines go/no-go criteria for public launch decisions.
 3. Confirm DNS and HTTPS for:
    - `https://coasensus.com`
    - `https://staging.coasensus.com`
-4. Log launch decision + timestamp + responsible owner in `docs/PROGRESS_LOG.md`.
+4. Run `Launch Stability` workflow (`.github/workflows/launch-stability.yml`) and verify `overallReady=true` for the 24h window.
+5. Log launch decision + timestamp + responsible owner in `docs/PROGRESS_LOG.md`.

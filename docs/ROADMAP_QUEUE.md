@@ -18,11 +18,11 @@ Lightweight tracker to keep momentum high while preserving deferred work.
 - [x] `MILESTONE-RATE-006` Add per-session rate-limited analytics sampling to reduce noisy events.
 - [x] `MILESTONE-TAXONOMY-007` Add explicit region/category distribution panel to admin diagnostics.
 - [x] `MILESTONE-PERF-008` Add cached feed query path for high-traffic read bursts.
-- [ ] `MILESTONE-LAUNCH-STABILITY-009` Automate 24h launch-stability gate tracking (monitor pass window + readiness status).
+- [x] `MILESTONE-LAUNCH-STABILITY-009` Automate 24h launch-stability gate tracking (monitor pass window + readiness status).
+- [ ] `MILESTONE-CATEGORY-SANITY-010` Add automated category-dominance checks for top feed cards.
 
 ## Next
 
-- [ ] `MILESTONE-CATEGORY-SANITY-010` Add automated category-dominance checks for top feed cards.
 - [ ] `MILESTONE-EDITORIAL-SPOTCHECK-011` Add top-20 feed snapshot + reviewer log workflow.
 - [ ] `MILESTONE-DASHBOARD-012` Add lightweight admin diagnostics dashboard view (read-only).
 

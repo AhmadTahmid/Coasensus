@@ -1,0 +1,44 @@
+name: Launch Stability
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 * * * *"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Evaluate 24h Launch Stability
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COASENSUS_STABILITY_WINDOW_HOURS: "24"
+          COASENSUS_STABILITY_MAX_FAILURES: "0"
+          COASENSUS_STABILITY_MAX_EMPTY_HOURS: "0"
+          COASENSUS_STABILITY_PRODUCTION_WORKFLOW: "monitor-production.yml"
+          COASENSUS_STABILITY_STAGING_WORKFLOW: "monitor-staging.yml"
+          COASENSUS_STABILITY_PRODUCTION_MAX_GAP_MINUTES: "40"
+          COASENSUS_STABILITY_STAGING_MAX_GAP_MINUTES: "70"
+          COASENSUS_STABILITY_PRODUCTION_MIN_RUNS: "80"
+          COASENSUS_STABILITY_STAGING_MIN_RUNS: "40"
+        run: node scripts/launch-stability.mjs
+
+      - name: Upload Launch Stability Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: launch-stability-${{ github.run_id }}
+          path: artifacts/launch-status.*
+          if-no-files-found: error
