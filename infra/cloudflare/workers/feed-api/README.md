@@ -7,7 +7,7 @@ Cloudflare Worker API for Coasensus.
 2. `GET /api/feed?page=1&pageSize=20&sort=trend&q=election&region=US`
 3. `POST /api/admin/refresh-feed` (manual ingestion refresh; requires `X-Admin-Token` if `COASENSUS_ADMIN_REFRESH_TOKEN` secret is set)
 4. `GET /api/admin/semantic-metrics?limit=30` (admin-protected telemetry snapshot)
-5. `GET /api/admin/feed-diagnostics` (admin-protected feed diagnostics + taxonomy panel)
+5. `GET /api/admin/feed-diagnostics?topN=20` (admin-protected feed diagnostics + taxonomy panel + top-page category composition)
 6. `POST /api/analytics`
 7. `GET /api/analytics?limit=50`
 

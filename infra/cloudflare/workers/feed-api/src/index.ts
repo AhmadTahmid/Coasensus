@@ -152,6 +152,11 @@ interface FeedDiagnosticsReasonCodesRow {
   reason_codes_json: string | null;
 }
 
+interface FeedDiagnosticsTopCategoryRow {
+  category: string | null;
+  count: number;
+}
+
 const CATEGORY_SET = new Set<MarketCategory>([
   "politics",
   "economy",
@@ -681,6 +686,9 @@ async function handleFeedDiagnostics(
 
   try {
     const hasGeoTag = await curatedFeedHasColumn(env.DB, "geo_tag");
+    const hasFrontPageScore = await curatedFeedHasColumn(env.DB, "front_page_score");
+    const topN = asPositiveInt(url.searchParams.get("topN"), 20, 1, 100);
+    const topCompositionSortSql = resolveSortSql("score", hasFrontPageScore, false);
     const countsQuery = `
       SELECT
         COUNT(*) AS total,
@@ -732,11 +740,27 @@ async function handleFeedDiagnostics(
       LIMIT 10
     `;
 
-    const [countsRow, categoryRows, decisionReasonRows, reasonCodesRows] = await Promise.all([
+    const topPageCategoryCountsQuery = `
+      SELECT
+        COALESCE(NULLIF(TRIM(category), ''), 'other') AS category,
+        COUNT(*) AS count
+      FROM (
+        SELECT category
+        FROM curated_feed
+        WHERE is_curated = 1
+        ORDER BY ${topCompositionSortSql}
+        LIMIT ?
+      ) AS ranked
+      GROUP BY COALESCE(NULLIF(TRIM(category), ''), 'other')
+      ORDER BY count DESC, category ASC
+    `;
+
+    const [countsRow, categoryRows, decisionReasonRows, reasonCodesRows, topPageCategoryRows] = await Promise.all([
       env.DB.prepare(countsQuery).first<FeedDiagnosticsCountsRow>(),
       env.DB.prepare(categoryCountsQuery).all<FeedDiagnosticsCategoryRow>(),
       env.DB.prepare(topDecisionReasonsQuery).all<FeedDiagnosticsDecisionReasonRow>(),
       env.DB.prepare("SELECT reason_codes_json FROM curated_feed").all<FeedDiagnosticsReasonCodesRow>(),
+      env.DB.prepare(topPageCategoryCountsQuery).bind(topN).all<FeedDiagnosticsTopCategoryRow>(),
     ]);
     const [regionRows, regionCategoryRows] = hasGeoTag
       ? await Promise.all([
@@ -872,6 +896,22 @@ async function handleFeedDiagnostics(
       .sort((a, b) => b.count - a.count || a.reasonCode.localeCompare(b.reasonCode))
       .slice(0, 15);
 
+    const topPageCategoryTotals = new Map<MarketCategory, number>();
+    for (const row of topPageCategoryRows.results ?? []) {
+      const category = toCategory((row.category ?? "other").trim());
+      const count = Number(row.count ?? 0);
+      topPageCategoryTotals.set(category, (topPageCategoryTotals.get(category) ?? 0) + count);
+    }
+    const topNEvaluated = [...topPageCategoryTotals.values()].reduce((sum, value) => sum + value, 0);
+    const topPageCompositionCategories = [...topPageCategoryTotals.entries()]
+      .map(([category, count]) => ({
+        category,
+        count,
+        shareOfTopN: toRatioOrNull(count, topNEvaluated),
+      }))
+      .sort((a, b) => b.count - a.count || a.category.localeCompare(b.category));
+    const dominantCategory = topPageCompositionCategories[0] ?? null;
+
     return json(
       200,
       {
@@ -884,6 +924,14 @@ async function handleFeedDiagnostics(
           regions: regionCounts,
           categories: categoryCounts,
           regionCategory: regionCategoryDistribution,
+        },
+        topPageComposition: {
+          sort: "score",
+          scoreFormula: hasFrontPageScore ? "front_page_score_v1" : "legacy_civic_plus_newsworthiness",
+          topNRequested: topN,
+          topNEvaluated,
+          categories: topPageCompositionCategories,
+          dominantCategory,
         },
         topDecisionReasons,
         topReasonCodes,

@@ -4,27 +4,6 @@ This backlog starts after `MILESTONE-PERF-008` completion and focuses on launch 
 
 ## Active
 
-### `MILESTONE-LAUNCH-STABILITY-009`
-- Goal: make launch readiness measurable from automation, not manual guesswork.
-- Scope:
-  - Track rolling 24-hour pass/fail state for production and staging monitor workflows.
-  - Persist readiness status in repo-friendly output (json/markdown artifact).
-  - Fail readiness when monitor failures exceed allowed threshold.
-- Acceptance:
-  - One command/script can report `ready|not-ready` for launch.
-  - Output includes evidence (workflow run IDs, timestamps, pass ratio).
-
-## Next
-
-### `MILESTONE-CATEGORY-SANITY-010`
-- Goal: detect feed dominance drift (for example sports/entertainment over-concentration).
-- Scope:
-  - Add top-page composition metrics to diagnostics.
-  - Add monitor alert when configurable dominance threshold is exceeded.
-- Acceptance:
-  - Diagnostics expose composition ratios for top-N cards.
-  - Alert signal appears in monitor output with clear reason code.
-
 ### `MILESTONE-EDITORIAL-SPOTCHECK-011`
 - Goal: reduce manual friction for editorial review.
 - Scope:
@@ -33,6 +12,8 @@ This backlog starts after `MILESTONE-PERF-008` completion and focuses on launch 
 - Acceptance:
   - Daily snapshots are generated and inspectable.
   - Review records can be attached to launch/no-go decisions.
+
+## Next
 
 ### `MILESTONE-DASHBOARD-012`
 - Goal: make diagnostics more accessible than raw API responses.
@@ -45,6 +26,27 @@ This backlog starts after `MILESTONE-PERF-008` completion and focuses on launch 
 - Acceptance:
   - Dashboard loads from existing admin endpoints with token auth.
   - No write actions; diagnostics-only surface.
+
+## Recently Completed
+
+### `MILESTONE-LAUNCH-STABILITY-009`
+- Goal: make launch readiness measurable from automation, not manual guesswork.
+- Scope:
+  - Track rolling 24-hour pass/fail state for production and staging monitor workflows.
+  - Persist readiness status in repo-friendly output (json/markdown artifact).
+  - Fail readiness when monitor failures exceed allowed threshold.
+- Acceptance:
+  - One command/script can report `ready|not-ready` for launch.
+  - Output includes evidence (workflow run IDs, timestamps, pass ratio).
+
+### `MILESTONE-CATEGORY-SANITY-010`
+- Goal: detect feed dominance drift (for example sports/entertainment over-concentration).
+- Scope:
+  - Add top-page composition metrics to diagnostics.
+  - Add monitor alert when configurable dominance threshold is exceeded.
+- Acceptance:
+  - Diagnostics expose composition ratios for top-N cards.
+  - Alert signal appears in monitor output with clear reason code.
 
 ## Parking Lot (Promote Only When Needed)
 

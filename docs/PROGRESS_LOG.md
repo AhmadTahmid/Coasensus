@@ -677,3 +677,24 @@
      - `max_gap_exceeded (455.64 > 70 minutes)`.
 240. Launch Stability artifact captured:
    - run artifact `launch-stability-22254064721` contains `launch-status.json` and `launch-status.md` for gate diagnostics.
+241. Started `MILESTONE-CATEGORY-SANITY-010` on branch `agent/category-sanity-pass1`.
+242. Extended admin diagnostics with top-page composition:
+   - `infra/cloudflare/workers/feed-api/src/index.ts` now computes top-N curated-card category mix (`topPageComposition`) using score-order ranking.
+   - output includes per-category counts + `shareOfTopN`, dominant category, and score formula metadata.
+243. Added category-dominance monitor signal:
+   - `scripts/monitor-production.mjs` now fetches `/api/admin/feed-diagnostics?topN=<N>` and evaluates dominant category share.
+   - emits `ALERT_CATEGORY_DOMINANCE` when dominant share exceeds configured threshold.
+244. Added monitor config knobs:
+   - `COASENSUS_CATEGORY_DOMINANCE_TOP_N`
+   - `COASENSUS_CATEGORY_DOMINANCE_MAX_SHARE`
+   - wired in both monitor workflows:
+     - `.github/workflows/monitor-production.yml`
+     - `.github/workflows/monitor-staging.yml`.
+245. Updated worker docs:
+   - `infra/cloudflare/workers/feed-api/README.md` route docs now include `feed-diagnostics?topN=20`.
+246. Milestone bookkeeping synced:
+   - `docs/ROADMAP_QUEUE.md` marks `MILESTONE-CATEGORY-SANITY-010` complete and promotes `MILESTONE-EDITORIAL-SPOTCHECK-011`.
+   - `docs/ISSUE_CHECKLIST.md` adds `QA-011` completed.
+   - `docs/POST_V2_BACKLOG.md` promoted active backlog to `MILESTONE-EDITORIAL-SPOTCHECK-011`.
+247. Validation:
+   - `npm run check` => success after category-sanity implementation.
