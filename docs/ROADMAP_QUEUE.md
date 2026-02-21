@@ -22,6 +22,7 @@ Lightweight tracker to keep momentum high while preserving deferred work.
 - [x] `MILESTONE-CATEGORY-SANITY-010` Add automated category-dominance checks for top feed cards.
 - [x] `MILESTONE-EDITORIAL-SPOTCHECK-011` Add top-20 feed snapshot + reviewer log workflow.
 - [x] `MILESTONE-DASHBOARD-012` Add lightweight admin diagnostics dashboard view (read-only).
+- [x] `MILESTONE-SEMANTIC-FAILOVER-013` Add temporary heuristic-only cooldown after consecutive LLM failure runs.
 
 ## Next
 

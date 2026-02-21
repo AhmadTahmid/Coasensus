@@ -51,6 +51,7 @@
 - [x] `QA-011` Add top-N category dominance diagnostics + monitor alert signal
 - [x] `QA-012` Add daily editorial top-20 snapshot workflow and reviewer decision log path
 - [x] `QA-013` Add read-only admin diagnostics dashboard view backed by existing admin APIs
+- [x] `QA-014` Add automatic semantic failover cooldown after consecutive LLM-failure runs
 
 ## EPIC-06 Hybrid Semantic Layer (Execution Plan V2)
 - [x] `SEM-001` Add phase-1 bouncer prefilter (query + local gates)

@@ -42,6 +42,9 @@ interface Env {
   COASENSUS_LLM_PROMPT_VERSION?: string;
   COASENSUS_LLM_MIN_NEWS_SCORE?: string;
   COASENSUS_LLM_MAX_MARKETS_PER_RUN?: string;
+  COASENSUS_LLM_FAILOVER_ENABLED?: string;
+  COASENSUS_LLM_FAILOVER_FAILURE_STREAK?: string;
+  COASENSUS_LLM_FAILOVER_COOLDOWN_RUNS?: string;
   COASENSUS_FRONTPAGE_W1?: string;
   COASENSUS_FRONTPAGE_W2?: string;
   COASENSUS_FRONTPAGE_W3?: string;
@@ -116,6 +119,14 @@ interface SemanticAggregateRow {
   cache_hits: number;
   cache_misses: number;
   avg_total_ms: number;
+}
+
+interface SemanticFailoverStateRow {
+  consecutive_failures: number | null;
+  cooldown_runs_remaining: number | null;
+  last_triggered_at: string | null;
+  last_reason: string | null;
+  updated_at: string | null;
 }
 
 interface FeedDiagnosticsCountsRow {
@@ -1071,9 +1082,29 @@ async function handleSemanticMetrics(
       LIMIT 20
     `;
 
-    const [runsRows, aggregateRows] = await Promise.all([
+    const failoverQuery = `
+      SELECT
+        consecutive_failures,
+        cooldown_runs_remaining,
+        last_triggered_at,
+        last_reason,
+        updated_at
+      FROM semantic_failover_state
+      WHERE id = 1
+      LIMIT 1
+    `;
+
+    const [runsRows, aggregateRows, failoverRow] = await Promise.all([
       env.DB.prepare(runsQuery).bind(limit).all<SemanticRefreshRunRow>(),
       env.DB.prepare(aggregateQuery).all<SemanticAggregateRow>(),
+      env.DB
+        .prepare(failoverQuery)
+        .first<SemanticFailoverStateRow>()
+        .catch((error) => {
+          // Keep telemetry endpoint available even if migration 0007 is not yet applied.
+          console.warn("Semantic failover state query unavailable", error);
+          return null;
+        }),
     ]);
 
     const runs = (runsRows.results ?? []).map((row) => {
@@ -1129,12 +1160,30 @@ async function handleSemanticMetrics(
       };
     });
 
+    const failoverState = (() => {
+      if (!failoverRow) {
+        return null;
+      }
+
+      const consecutive = Number(failoverRow.consecutive_failures ?? 0);
+      const cooldown = Number(failoverRow.cooldown_runs_remaining ?? 0);
+      return {
+        consecutiveFailures: Number.isFinite(consecutive) ? Math.max(0, Math.floor(consecutive)) : 0,
+        cooldownRunsRemaining: Number.isFinite(cooldown) ? Math.max(0, Math.floor(cooldown)) : 0,
+        active: Number.isFinite(cooldown) ? Math.max(0, Math.floor(cooldown)) > 0 : false,
+        lastTriggeredAt: failoverRow.last_triggered_at ?? null,
+        lastReason: failoverRow.last_reason ?? null,
+        updatedAt: failoverRow.updated_at ?? null,
+      };
+    })();
+
     return json(
       200,
       {
         generatedAt: new Date().toISOString(),
         runs,
         aggregates,
+        failoverState,
       },
       origin
     );

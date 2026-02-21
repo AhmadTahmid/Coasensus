@@ -36,6 +36,10 @@ Reads from D1 tables:
    - `COASENSUS_LLM_PROMPT_VERSION`
    - `COASENSUS_LLM_MIN_NEWS_SCORE`
    - `COASENSUS_LLM_MAX_MARKETS_PER_RUN` (max LLM attempts per refresh run)
+   - automatic failover controls (temporary heuristic-only cooldown after repeated LLM-failure runs):
+     - `COASENSUS_LLM_FAILOVER_ENABLED` (`1` default)
+     - `COASENSUS_LLM_FAILOVER_FAILURE_STREAK` (default `3`)
+     - `COASENSUS_LLM_FAILOVER_COOLDOWN_RUNS` (default `4`)
    - Worker secret required: `COASENSUS_LLM_API_KEY`
    - For Gemini 2.5 Flash, set:
      - `COASENSUS_LLM_PROVIDER=gemini`
