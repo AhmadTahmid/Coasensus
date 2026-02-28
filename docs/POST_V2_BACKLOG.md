@@ -4,16 +4,20 @@ This backlog starts after `MILESTONE-PERF-008` completion and focuses on launch 
 
 ## Active
 
-### `MILESTONE-SMART-FIREHOSE-016` (Foundation Pass 1)
-- Goal: shift ingest toward incremental market updates while preserving reliability.
-- Scope:
-  - Add a managed Polymarket market-channel WebSocket client with reconnect/backoff.
-  - Maintain in-memory snapshot updated by socket messages.
-  - Add staleness-aware REST fallback so ingest remains deterministic during socket gaps.
-- Current status:
-  - foundation implemented in `services/ingest-worker`; production Worker integration still pending follow-up.
+- (none)
 
 ## Recently Completed
+
+### `MILESTONE-SMART-FIREHOSE-016`
+- Goal: shift ingest toward incremental market updates while preserving reliability.
+- Scope:
+  - Add managed market-channel websocket ingestion foundation in `services/ingest-worker`.
+  - Add worker-side Smart Firehose overlay path in Cloudflare refresh flow.
+  - Preserve REST as source-of-truth fallback for deterministic runs.
+- Acceptance:
+  - Ingest worker supports websocket snapshot + reconnect/fallback.
+  - Cloudflare refresh supports optional websocket warmup overlay and falls back cleanly when unavailable/no updates.
+  - Deployment configs expose explicit Smart Firehose flags (`enabled`, `ws_url`, `warmup`, `max_messages`).
 
 ### `MILESTONE-UI-POLISH-014`
 - Goal: improve feed readability/scannability with stronger visual hierarchy.
