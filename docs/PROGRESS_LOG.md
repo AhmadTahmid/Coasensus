@@ -942,3 +942,25 @@
      - `attempted=true`
      - `connected=true`
    - monitor workflow: `Monitor Staging` run `22525950039` => success.
+314. Ran fresh editorial snapshot workflow for launch-readiness evidence:
+   - workflow: `Editorial Spotcheck`
+   - run: `22527421938`
+   - result: success
+   - artifact: `editorial-spotcheck-22527421938` (includes `editorial-spotcheck.json` and `.md`).
+315. Recorded reviewer log entries in `docs/EDITORIAL_REVIEW_LOG.md` using run `22527421938`:
+   - production review marked `pass`
+   - staging review marked `pass`
+   - sampled top-20 composition remained within current category-cap policy (`politics` share `0.65`).
+316. Executed launch-stability script locally for strict 24h gate status:
+   - command: `node scripts/launch-stability.mjs`
+   - generated at: `2026-02-28T19:20:44.604Z`
+   - result: `overallReady=false`
+   - key reasons:
+     - production: historical failures/gaps in current 24h window (`runs=49`, `failures=5`, `maxGap=126.17m`)
+     - staging: historical gap threshold miss (`runs=48`, `failures=0`, `maxGap=135.3m`).
+317. Launch decision entry (dated):
+   - decision time: `2026-02-28T19:30:00Z`
+   - decision: `SOFT-GO (beta operation)` with explicit exception; not a strict public launch pass yet.
+   - owner: `AhmadTahmid`
+   - exception expiry: `2026-03-01T19:30:00Z`
+   - condition to clear exception: next clean 24h `Launch Stability` window with `overallReady=true`.
