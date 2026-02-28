@@ -4,7 +4,14 @@ This backlog starts after `MILESTONE-PERF-008` completion and focuses on launch 
 
 ## Active
 
-- (none)
+### `MILESTONE-SMART-FIREHOSE-016` (Foundation Pass 1)
+- Goal: shift ingest toward incremental market updates while preserving reliability.
+- Scope:
+  - Add a managed Polymarket market-channel WebSocket client with reconnect/backoff.
+  - Maintain in-memory snapshot updated by socket messages.
+  - Add staleness-aware REST fallback so ingest remains deterministic during socket gaps.
+- Current status:
+  - foundation implemented in `services/ingest-worker`; production Worker integration still pending follow-up.
 
 ## Recently Completed
 

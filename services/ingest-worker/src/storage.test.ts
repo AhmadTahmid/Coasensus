@@ -28,6 +28,7 @@ describe("persistIngestionRun", () => {
           rawCount: 3,
           normalizedCount: 2,
           droppedCount: 1,
+          source: "rest_fallback",
         },
         rawMarkets: [{ id: "raw-1", question: "Raw Q1" }],
         normalizedMarkets: [
@@ -62,4 +63,3 @@ describe("persistIngestionRun", () => {
     expect(parsedNormalized[0]?.id).toBe("norm-1");
   });
 });
-
