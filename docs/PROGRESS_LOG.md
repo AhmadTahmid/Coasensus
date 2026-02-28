@@ -913,3 +913,21 @@
    - `npm -C services/ingest-worker run lint` => success.
    - `npm -C services/ingest-worker run test` => success (25 tests).
    - `npm run check` => success (repo-wide).
+307. Started Smart Firehose worker integration pass on branch `agent/smart-firehose-worker-pass2`.
+308. Extended Cloudflare refresh runtime config for Smart Firehose controls:
+   - `COASENSUS_SMART_FIREHOSE_ENABLED`
+   - `COASENSUS_SMART_FIREHOSE_WS_URL`
+   - `COASENSUS_SMART_FIREHOSE_WARMUP_MS`
+   - `COASENSUS_SMART_FIREHOSE_MAX_MESSAGES`.
+309. Implemented worker-side Smart Firehose overlay in `infra/cloudflare/workers/feed-api/src/refresh.ts`:
+   - refresh still performs standard REST market fetch first.
+   - optional websocket warmup then overlays market price updates onto fetched snapshot.
+   - automatic fallback to REST-only when websocket is disabled/unavailable/errors/no updates.
+   - refresh summary now reports ingestion source (`rest_only` vs `rest_plus_firehose_overlay`) and firehose metrics.
+310. Updated Worker surface + docs/config parity:
+   - `infra/cloudflare/workers/feed-api/src/index.ts` env typing includes Smart Firehose vars.
+   - `infra/cloudflare/workers/feed-api/README.md` documents Smart Firehose behavior and controls.
+   - `infra/cloudflare/wrangler.api.jsonc` + `infra/cloudflare/wrangler.api.ci.jsonc` include Smart Firehose vars across base/staging/production (default disabled).
+311. Validation:
+   - `npm run check` => success (repo-wide).
+   - `npx wrangler deploy --dry-run --config infra/cloudflare/wrangler.api.ci.jsonc --env staging` => success.

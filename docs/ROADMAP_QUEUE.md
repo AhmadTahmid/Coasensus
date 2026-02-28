@@ -10,7 +10,7 @@ Lightweight tracker to keep momentum high while preserving deferred work.
 
 ## Now
 
-- [ ] `MILESTONE-SMART-FIREHOSE-016` Smart Firehose foundation (WebSocket market stream client + reconnect/fallback in ingest worker).
+- [x] `MILESTONE-SMART-FIREHOSE-016` Smart Firehose foundation (ingest worker + worker-side websocket overlay with REST fallback).
 - [x] `MILESTONE-DEDUP-001` Topic/event de-dup in feed curation (reduce same-story dominance)
 - [x] `MILESTONE-UI-SEARCH-002` Add text search (question/description) on API + web controls.
 - [x] `MILESTONE-REGION-003` Add region filter controls and expose geo tag in UI.

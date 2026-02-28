@@ -115,6 +115,10 @@ interface RefreshEnv {
   COASENSUS_TOPIC_DEDUP_SIMILARITY?: string;
   COASENSUS_TOPIC_DEDUP_MIN_SHARED_TOKENS?: string;
   COASENSUS_TOPIC_DEDUP_MAX_PER_CLUSTER?: string;
+  COASENSUS_SMART_FIREHOSE_ENABLED?: string;
+  COASENSUS_SMART_FIREHOSE_WS_URL?: string;
+  COASENSUS_SMART_FIREHOSE_WARMUP_MS?: string;
+  COASENSUS_SMART_FIREHOSE_MAX_MESSAGES?: string;
 }
 
 interface FetchOptions {
@@ -134,6 +138,37 @@ interface ActiveMarketsFetchResult {
   markets: RawPolymarketMarket[];
   pagesFetched: number;
   droppedByBouncer: number;
+  source?: "rest_only" | "rest_plus_firehose_overlay";
+  firehose?: FirehoseOverlayMetrics;
+}
+
+interface SmartFirehoseConfig {
+  enabled: boolean;
+  websocketUrl: string;
+  warmupMs: number;
+  maxMessages: number;
+}
+
+interface FirehoseOverlayMetrics {
+  enabled: boolean;
+  attempted: boolean;
+  connected: boolean;
+  websocketUrl: string;
+  warmupMs: number;
+  maxMessages: number;
+  messages: number;
+  parseFailures: number;
+  updatesApplied: number;
+  unknownMarketUpdates: number;
+  durationMs: number;
+  skippedReason: string | null;
+}
+
+interface MarketChannelUpdate {
+  marketId: string;
+  lastTradePrice: number | null;
+  bestBid: number | null;
+  bestAsk: number | null;
 }
 
 interface NormalizationResult {
@@ -268,6 +303,10 @@ export interface RefreshSummary {
     failoverConsecutiveFailures: number;
     failoverCooldownRunsRemaining: number;
   };
+  ingestion: {
+    source: "rest_only" | "rest_plus_firehose_overlay";
+    firehose: FirehoseOverlayMetrics;
+  };
   metrics: {
     totalMs: number;
     fetchMs: number;
@@ -311,6 +350,10 @@ const DEFAULT_TOPIC_DEDUP_SIMILARITY = 0.55;
 const DEFAULT_TOPIC_DEDUP_MIN_SHARED_TOKENS = 5;
 const DEFAULT_TOPIC_DEDUP_MAX_PER_CLUSTER = 1;
 const SEMANTIC_FAILOVER_STATE_ID = 1;
+const DEFAULT_SMART_FIREHOSE_ENABLED = false;
+const DEFAULT_SMART_FIREHOSE_WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market";
+const DEFAULT_SMART_FIREHOSE_WARMUP_MS = 2_000;
+const DEFAULT_SMART_FIREHOSE_MAX_MESSAGES = 120;
 
 const EXCLUSION_TOKENS = [
   "meme",
@@ -388,6 +431,20 @@ const TOPIC_STOPWORDS = new Set([
   "will",
   "with",
 ]);
+
+const FIREHOSE_MARKET_ID_PRIMARY_KEYS = [
+  "market",
+  "market_id",
+  "marketId",
+  "condition_id",
+  "conditionId",
+  "token_id",
+  "tokenId",
+];
+const FIREHOSE_MARKET_ID_FALLBACK_KEYS = ["id"];
+const FIREHOSE_LAST_TRADE_PRICE_KEYS = ["last_trade_price", "lastTradePrice", "price", "p"];
+const FIREHOSE_BEST_BID_KEYS = ["best_bid", "bestBid", "bid"];
+const FIREHOSE_BEST_ASK_KEYS = ["best_ask", "bestAsk", "ask"];
 
 function asPositiveInt(value: string | undefined, fallback: number, min: number, max: number): number {
   const parsed = Number(value);
@@ -799,6 +856,25 @@ function resolveFetchOptions(env: RefreshEnv): FetchOptions {
   };
 }
 
+function resolveSmartFirehoseConfig(env: RefreshEnv): SmartFirehoseConfig {
+  return {
+    enabled: asBool(env.COASENSUS_SMART_FIREHOSE_ENABLED, DEFAULT_SMART_FIREHOSE_ENABLED),
+    websocketUrl: env.COASENSUS_SMART_FIREHOSE_WS_URL?.trim() || DEFAULT_SMART_FIREHOSE_WS_URL,
+    warmupMs: asPositiveInt(
+      env.COASENSUS_SMART_FIREHOSE_WARMUP_MS,
+      DEFAULT_SMART_FIREHOSE_WARMUP_MS,
+      100,
+      15_000
+    ),
+    maxMessages: asPositiveInt(
+      env.COASENSUS_SMART_FIREHOSE_MAX_MESSAGES,
+      DEFAULT_SMART_FIREHOSE_MAX_MESSAGES,
+      1,
+      1_000
+    ),
+  };
+}
+
 function sleep(ms: number): Promise<void> {
   if (ms <= 0) {
     return Promise.resolve();
@@ -951,7 +1027,7 @@ function passesBouncer(market: RawPolymarketMarket, options: FetchOptions): bool
   return true;
 }
 
-async function fetchActiveMarkets(options: FetchOptions): Promise<ActiveMarketsFetchResult> {
+async function fetchActiveMarketsRest(options: FetchOptions): Promise<ActiveMarketsFetchResult> {
   const seenIds = new Set<string>();
   const markets: RawPolymarketMarket[] = [];
   let pagesFetched = 0;
@@ -987,6 +1063,220 @@ async function fetchActiveMarkets(options: FetchOptions): Promise<ActiveMarketsF
   return { markets, pagesFetched, droppedByBouncer };
 }
 
+interface FirehoseSocketLike {
+  onopen: ((event: unknown) => void) | null;
+  onmessage: ((event: unknown) => void) | null;
+  onerror: ((event: unknown) => void) | null;
+  onclose: ((event: unknown) => void) | null;
+  close(code?: number, reason?: string): void;
+  send?(data: string): void;
+}
+
+type FirehoseSocketConstructor = new (url: string) => FirehoseSocketLike;
+
+function resolveFirehoseSocketConstructor(): FirehoseSocketConstructor | null {
+  const maybe = (globalThis as { WebSocket?: FirehoseSocketConstructor }).WebSocket;
+  return typeof maybe === "function" ? maybe : null;
+}
+
+function defaultFirehoseMetrics(config: SmartFirehoseConfig, skippedReason: string): FirehoseOverlayMetrics {
+  return {
+    enabled: config.enabled,
+    attempted: false,
+    connected: false,
+    websocketUrl: config.websocketUrl,
+    warmupMs: config.warmupMs,
+    maxMessages: config.maxMessages,
+    messages: 0,
+    parseFailures: 0,
+    updatesApplied: 0,
+    unknownMarketUpdates: 0,
+    durationMs: 0,
+    skippedReason,
+  };
+}
+
+function buildRawMarketMap(markets: RawPolymarketMarket[]): Map<string, RawPolymarketMarket> {
+  const byId = new Map<string, RawPolymarketMarket>();
+  for (const market of markets) {
+    const id = asStringId(market.id ?? market.marketId);
+    if (!id) {
+      continue;
+    }
+    byId.set(id, market);
+  }
+  return byId;
+}
+
+function applyMarketUpdates(
+  byId: Map<string, RawPolymarketMarket>,
+  updates: MarketChannelUpdate[]
+): { updatesApplied: number; unknownMarketUpdates: number } {
+  let updatesApplied = 0;
+  let unknownMarketUpdates = 0;
+
+  for (const update of updates) {
+    const market = byId.get(update.marketId);
+    if (!market) {
+      unknownMarketUpdates += 1;
+      continue;
+    }
+
+    if (update.lastTradePrice !== null) {
+      market.lastTradePrice = update.lastTradePrice;
+      market.price = update.lastTradePrice;
+    }
+    if (update.bestBid !== null) {
+      market.bestBid = update.bestBid;
+    }
+    if (update.bestAsk !== null) {
+      market.bestAsk = update.bestAsk;
+    }
+    market.updatedAt = new Date().toISOString();
+    updatesApplied += 1;
+  }
+
+  return { updatesApplied, unknownMarketUpdates };
+}
+
+async function overlayWithSmartFirehose(
+  markets: RawPolymarketMarket[],
+  config: SmartFirehoseConfig
+): Promise<FirehoseOverlayMetrics> {
+  if (!config.enabled) {
+    return defaultFirehoseMetrics(config, "disabled");
+  }
+  if (markets.length === 0) {
+    return defaultFirehoseMetrics(config, "no_markets");
+  }
+
+  const SocketCtor = resolveFirehoseSocketConstructor();
+  if (!SocketCtor) {
+    return defaultFirehoseMetrics(config, "websocket_unavailable");
+  }
+
+  const metrics: FirehoseOverlayMetrics = {
+    enabled: true,
+    attempted: true,
+    connected: false,
+    websocketUrl: config.websocketUrl,
+    warmupMs: config.warmupMs,
+    maxMessages: config.maxMessages,
+    messages: 0,
+    parseFailures: 0,
+    updatesApplied: 0,
+    unknownMarketUpdates: 0,
+    durationMs: 0,
+    skippedReason: null,
+  };
+
+  const started = Date.now();
+  const byId = buildRawMarketMap(markets);
+  let socket: FirehoseSocketLike | null = null;
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+
+  await new Promise<void>((resolve) => {
+    let done = false;
+    const finish = (reason?: string): void => {
+      if (done) {
+        return;
+      }
+      done = true;
+      if (reason && metrics.skippedReason === null) {
+        metrics.skippedReason = reason;
+      }
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+        timeoutHandle = null;
+      }
+      resolve();
+    };
+
+    try {
+      socket = new SocketCtor(config.websocketUrl);
+    } catch (error) {
+      metrics.skippedReason = `connect_error:${error instanceof Error ? error.message : String(error)}`;
+      finish();
+      return;
+    }
+
+    socket.onopen = () => {
+      metrics.connected = true;
+    };
+
+    socket.onmessage = (event) => {
+      metrics.messages += 1;
+
+      const text = messageEventToText(event);
+      if (!text) {
+        if (metrics.messages >= config.maxMessages) {
+          finish();
+        }
+        return;
+      }
+
+      let payload: unknown;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        metrics.parseFailures += 1;
+        if (metrics.messages >= config.maxMessages) {
+          finish();
+        }
+        return;
+      }
+
+      const updates = extractMarketUpdatesFromPayload(payload);
+      if (updates.length > 0) {
+        const applied = applyMarketUpdates(byId, updates);
+        metrics.updatesApplied += applied.updatesApplied;
+        metrics.unknownMarketUpdates += applied.unknownMarketUpdates;
+      }
+
+      if (metrics.messages >= config.maxMessages) {
+        finish();
+      }
+    };
+
+    socket.onerror = () => {
+      finish(metrics.connected ? "socket_error_after_connect" : "socket_error");
+    };
+
+    socket.onclose = () => {
+      finish();
+    };
+
+    timeoutHandle = setTimeout(() => {
+      finish();
+    }, config.warmupMs);
+  });
+
+  if (socket) {
+    try {
+      socket.close(1000, "smart firehose warmup complete");
+    } catch {
+      // Best effort socket close.
+    }
+  }
+
+  metrics.durationMs = Date.now() - started;
+  return metrics;
+}
+
+async function fetchActiveMarkets(options: FetchOptions, env: RefreshEnv): Promise<ActiveMarketsFetchResult> {
+  const fetched = await fetchActiveMarketsRest(options);
+  const firehoseConfig = resolveSmartFirehoseConfig(env);
+  const firehoseMetrics = await overlayWithSmartFirehose(fetched.markets, firehoseConfig);
+  const source: "rest_only" | "rest_plus_firehose_overlay" =
+    firehoseMetrics.updatesApplied > 0 ? "rest_plus_firehose_overlay" : "rest_only";
+
+  return {
+    ...fetched,
+    source,
+    firehose: firehoseMetrics,
+  };
+}
+
 function asNumberOrNull(value: unknown): number | null {
   if (value === null || value === undefined) {
     return null;
@@ -997,6 +1287,126 @@ function asNumberOrNull(value: unknown): number | null {
 
 function asStringOrNull(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+function asStringId(value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const normalized = String(value).trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function pickFirstString(record: Record<string, unknown>, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = asStringId(record[key]);
+    if (value) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function pickFirstNumber(record: Record<string, unknown>, keys: string[]): number | null {
+  for (const key of keys) {
+    const value = asNumberOrNull(record[key]);
+    if (value !== null) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function deepCollectRecords(input: unknown, maxDepth = 6): Record<string, unknown>[] {
+  const seen = new Set<object>();
+  const collected: Record<string, unknown>[] = [];
+
+  function walk(value: unknown, depth: number): void {
+    if (depth > maxDepth || value === null || value === undefined) {
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        walk(item, depth + 1);
+      }
+      return;
+    }
+    const record = asRecord(value);
+    if (!record) {
+      return;
+    }
+    if (seen.has(record)) {
+      return;
+    }
+    seen.add(record);
+    collected.push(record);
+    for (const nested of Object.values(record)) {
+      walk(nested, depth + 1);
+    }
+  }
+
+  walk(input, 0);
+  return collected;
+}
+
+function messageEventToText(event: unknown): string | null {
+  const maybeRecord = asRecord(event);
+  const payload = maybeRecord && "data" in maybeRecord ? maybeRecord.data : event;
+
+  if (typeof payload === "string") {
+    return payload;
+  }
+  if (payload instanceof ArrayBuffer) {
+    return new TextDecoder().decode(payload);
+  }
+  if (payload instanceof Uint8Array) {
+    return new TextDecoder().decode(payload);
+  }
+  if (payload && typeof payload === "object") {
+    const maybeString = String(payload);
+    return maybeString.trim().length > 0 && maybeString !== "[object Object]" ? maybeString : null;
+  }
+  return null;
+}
+
+function extractMarketUpdatesFromPayload(payload: unknown): MarketChannelUpdate[] {
+  const records = deepCollectRecords(payload);
+  const byMarketId = new Map<string, MarketChannelUpdate>();
+
+  for (const record of records) {
+    const primaryId = pickFirstString(record, FIREHOSE_MARKET_ID_PRIMARY_KEYS);
+    const fallbackId = pickFirstString(record, FIREHOSE_MARKET_ID_FALLBACK_KEYS);
+    const marketId = primaryId ?? fallbackId;
+    if (!marketId) {
+      continue;
+    }
+
+    const lastTradePrice = pickFirstNumber(record, FIREHOSE_LAST_TRADE_PRICE_KEYS);
+    const bestBid = pickFirstNumber(record, FIREHOSE_BEST_BID_KEYS);
+    const bestAsk = pickFirstNumber(record, FIREHOSE_BEST_ASK_KEYS);
+    const hasPriceSignal = lastTradePrice !== null || bestBid !== null || bestAsk !== null;
+
+    // `id` is too generic, so only allow fallback ids when there is an explicit price signal.
+    if (!primaryId && !hasPriceSignal) {
+      continue;
+    }
+
+    byMarketId.set(marketId, {
+      marketId,
+      lastTradePrice,
+      bestBid,
+      bestAsk,
+    });
+  }
+
+  return [...byMarketId.values()];
 }
 
 function parseStringArray(value: unknown): string[] {
@@ -2386,7 +2796,7 @@ export async function refreshCuratedFeed(env: RefreshEnv): Promise<RefreshSummar
   const started = Date.now();
   const fetchStarted = Date.now();
   const fetchOptions = resolveFetchOptions(env);
-  const fetched = await fetchActiveMarkets(fetchOptions);
+  const fetched = await fetchActiveMarkets(fetchOptions, env);
   const fetchMs = Date.now() - fetchStarted;
 
   const normalizeStarted = Date.now();
@@ -2428,6 +2838,12 @@ export async function refreshCuratedFeed(env: RefreshEnv): Promise<RefreshSummar
     curatedCount: curation.curated.length,
     rejectedCount: curation.rejected.length,
     semantic: semantic.metrics,
+    ingestion: {
+      source: fetched.source ?? "rest_only",
+      firehose:
+        fetched.firehose ??
+        defaultFirehoseMetrics(resolveSmartFirehoseConfig(env), "not_attempted"),
+    },
     metrics: {
       totalMs: Date.now() - started,
       fetchMs,
