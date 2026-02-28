@@ -45,6 +45,7 @@ Reads from D1 tables:
    - `COASENSUS_LLM_BASE_URL` (default: `https://api.openai.com/v1`)
    - `COASENSUS_LLM_PROMPT_VERSION`
    - `COASENSUS_LLM_MIN_NEWS_SCORE`
+   - `COASENSUS_LLM_MIN_NEWS_SCORE_POLITICS` (optional category floor override)
    - `COASENSUS_LLM_MAX_MARKETS_PER_RUN` (max LLM attempts per refresh run)
    - automatic failover controls (temporary heuristic-only cooldown after repeated LLM-failure runs):
      - `COASENSUS_LLM_FAILOVER_ENABLED` (`1` default)
@@ -60,6 +61,9 @@ Reads from D1 tables:
    - `COASENSUS_FRONTPAGE_W2` (log-volume term)
    - `COASENSUS_FRONTPAGE_W3` (log-liquidity term)
    - `COASENSUS_FRONTPAGE_LAMBDA` (time-decay penalty per hour)
+   - optional top-window diversity controls:
+     - `COASENSUS_TOP_COMPOSITION_WINDOW` (default `20`)
+     - `COASENSUS_TOP_CATEGORY_MAX_SHARE` (default `1.0`; set below `1.0` to cap a single category in the top window)
 7. Feed-read burst cache (Worker Cache API):
    - `COASENSUS_FEED_CACHE_ENABLED` (`1` by default; set `0` to disable)
    - `COASENSUS_FEED_CACHE_TTL_SECONDS` (default `45`)

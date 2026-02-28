@@ -106,6 +106,7 @@ interface RefreshEnv {
   COASENSUS_LLM_API_KEY?: string;
   COASENSUS_LLM_PROMPT_VERSION?: string;
   COASENSUS_LLM_MIN_NEWS_SCORE?: string;
+  COASENSUS_LLM_MIN_NEWS_SCORE_POLITICS?: string;
   COASENSUS_LLM_MIN_NEWS_SCORE_SPORTS?: string;
   COASENSUS_LLM_MIN_NEWS_SCORE_ENTERTAINMENT?: string;
   COASENSUS_LLM_MAX_MARKETS_PER_RUN?: string;
@@ -120,6 +121,8 @@ interface RefreshEnv {
   COASENSUS_TOPIC_DEDUP_SIMILARITY?: string;
   COASENSUS_TOPIC_DEDUP_MIN_SHARED_TOKENS?: string;
   COASENSUS_TOPIC_DEDUP_MAX_PER_CLUSTER?: string;
+  COASENSUS_TOP_COMPOSITION_WINDOW?: string;
+  COASENSUS_TOP_CATEGORY_MAX_SHARE?: string;
   COASENSUS_SMART_FIREHOSE_ENABLED?: string;
   COASENSUS_SMART_FIREHOSE_WS_URL?: string;
   COASENSUS_SMART_FIREHOSE_WARMUP_MS?: string;
@@ -203,6 +206,12 @@ interface TopicDedupConfig {
   similarityThreshold: number;
   minSharedTokens: number;
   maxPerCluster: number;
+}
+
+interface TopCompositionConfig {
+  topWindow: number;
+  maxCategoryShare: number;
+  enabled: boolean;
 }
 
 interface SemanticFailoverConfig {
@@ -359,6 +368,8 @@ const DEFAULT_TOPIC_DEDUP_ENABLED = true;
 const DEFAULT_TOPIC_DEDUP_SIMILARITY = 0.55;
 const DEFAULT_TOPIC_DEDUP_MIN_SHARED_TOKENS = 5;
 const DEFAULT_TOPIC_DEDUP_MAX_PER_CLUSTER = 1;
+const DEFAULT_TOP_COMPOSITION_WINDOW = 20;
+const DEFAULT_TOP_CATEGORY_MAX_SHARE = 1;
 const SEMANTIC_FAILOVER_STATE_ID = 1;
 const DEFAULT_SMART_FIREHOSE_ENABLED = false;
 const DEFAULT_SMART_FIREHOSE_WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market";
@@ -518,6 +529,21 @@ function resolveTopicDedupConfig(env: RefreshEnv): TopicDedupConfig {
       1,
       20
     ),
+  };
+}
+
+function resolveTopCompositionConfig(env: RefreshEnv): TopCompositionConfig {
+  const topWindow = asPositiveInt(env.COASENSUS_TOP_COMPOSITION_WINDOW, DEFAULT_TOP_COMPOSITION_WINDOW, 1, 100);
+  const maxCategoryShare = asFiniteNumber(
+    env.COASENSUS_TOP_CATEGORY_MAX_SHARE,
+    DEFAULT_TOP_CATEGORY_MAX_SHARE,
+    0.05,
+    1
+  );
+  return {
+    topWindow,
+    maxCategoryShare,
+    enabled: maxCategoryShare < 1,
   };
 }
 
@@ -2416,6 +2442,10 @@ function llmMinNewsScore(env: RefreshEnv): number {
 
 function llmCategoryNewsScoreFloor(env: RefreshEnv, category: MarketCategory): number {
   const base = llmMinNewsScore(env);
+  if (category === "politics") {
+    const politicsFloor = asFiniteNumber(env.COASENSUS_LLM_MIN_NEWS_SCORE_POLITICS, base, 1, 100);
+    return Math.max(base, politicsFloor);
+  }
   if (category === "sports") {
     const sportsFloor = asFiniteNumber(
       env.COASENSUS_LLM_MIN_NEWS_SCORE_SPORTS,
@@ -2548,6 +2578,50 @@ function applyTopicDeduplication(
   };
 }
 
+function rebalanceTopComposition(curated: CuratedFeedItem[], env: RefreshEnv): CuratedFeedItem[] {
+  const config = resolveTopCompositionConfig(env);
+  if (!config.enabled || curated.length <= 1) {
+    return curated;
+  }
+
+  const topWindow = Math.min(config.topWindow, curated.length);
+  const maxPerCategory = Math.max(1, Math.floor(topWindow * config.maxCategoryShare));
+  if (maxPerCategory >= topWindow) {
+    return curated;
+  }
+  const working = [...curated];
+  const demotionPenalty = 20;
+  const maxPasses = 20;
+
+  for (let pass = 0; pass < maxPasses; pass += 1) {
+    working.sort((a, b) => b.frontPageScore - a.frontPageScore || a.id.localeCompare(b.id));
+    const categoryCounts = new Map<MarketCategory, number>();
+    const demote: CuratedFeedItem[] = [];
+
+    for (const item of working.slice(0, topWindow)) {
+      const category = item.score.category;
+      const nextCount = (categoryCounts.get(category) ?? 0) + 1;
+      categoryCounts.set(category, nextCount);
+      if (nextCount > maxPerCategory) {
+        demote.push(item);
+      }
+    }
+
+    if (demote.length === 0) {
+      break;
+    }
+
+    for (let index = 0; index < demote.length; index += 1) {
+      const item = demote[index];
+      const adjusted = item.frontPageScore - (demotionPenalty + index * 0.001);
+      item.frontPageScore = Number(adjusted.toFixed(6));
+    }
+  }
+
+  working.sort((a, b) => b.frontPageScore - a.frontPageScore || a.id.localeCompare(b.id));
+  return working;
+}
+
 function curateMarkets(
   markets: Market[],
   semanticByMarketId: Map<string, SemanticClassification>,
@@ -2602,7 +2676,11 @@ function curateMarkets(
   }
 
   curated.sort((a, b) => b.frontPageScore - a.frontPageScore || a.id.localeCompare(b.id));
-  return applyTopicDeduplication(curated, rejected, env);
+  const deduped = applyTopicDeduplication(curated, rejected, env);
+  return {
+    curated: rebalanceTopComposition(deduped.curated, env),
+    rejected: deduped.rejected,
+  };
 }
 
 async function runBatchInChunks(db: D1Database, statements: D1PreparedStatement[], chunkSize = 50): Promise<void> {
