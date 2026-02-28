@@ -46,7 +46,8 @@
     "COASENSUS_SMART_FIREHOSE_ENABLED": "0",
     "COASENSUS_SMART_FIREHOSE_WS_URL": "wss://ws-subscriptions-clob.polymarket.com/ws/market",
     "COASENSUS_SMART_FIREHOSE_WARMUP_MS": "2000",
-    "COASENSUS_SMART_FIREHOSE_MAX_MESSAGES": "120"
+    "COASENSUS_SMART_FIREHOSE_MAX_MESSAGES": "120",
+    "COASENSUS_SMART_FIREHOSE_MAX_ASSET_IDS": "400"
   },
   "env": {
     "staging": {
@@ -94,8 +95,9 @@
         "COASENSUS_TOPIC_DEDUP_MAX_PER_CLUSTER": "1",
         "COASENSUS_SMART_FIREHOSE_ENABLED": "1",
         "COASENSUS_SMART_FIREHOSE_WS_URL": "wss://ws-subscriptions-clob.polymarket.com/ws/market",
-        "COASENSUS_SMART_FIREHOSE_WARMUP_MS": "2000",
-        "COASENSUS_SMART_FIREHOSE_MAX_MESSAGES": "120"
+        "COASENSUS_SMART_FIREHOSE_WARMUP_MS": "8000",
+        "COASENSUS_SMART_FIREHOSE_MAX_MESSAGES": "400",
+        "COASENSUS_SMART_FIREHOSE_MAX_ASSET_IDS": "800"
       },
       "triggers": {
         "crons": ["*/30 * * * *"]
@@ -155,7 +157,8 @@
         "COASENSUS_SMART_FIREHOSE_ENABLED": "0",
         "COASENSUS_SMART_FIREHOSE_WS_URL": "wss://ws-subscriptions-clob.polymarket.com/ws/market",
         "COASENSUS_SMART_FIREHOSE_WARMUP_MS": "2000",
-        "COASENSUS_SMART_FIREHOSE_MAX_MESSAGES": "120"
+        "COASENSUS_SMART_FIREHOSE_MAX_MESSAGES": "120",
+        "COASENSUS_SMART_FIREHOSE_MAX_ASSET_IDS": "400"
       },
       "triggers": {
         "crons": ["*/15 * * * *"]

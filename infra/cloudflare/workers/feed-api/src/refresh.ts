@@ -46,6 +46,8 @@ interface CuratedFeedItem extends Market {
 interface RawPolymarketMarket {
   id?: string | number;
   marketId?: string | number;
+  conditionId?: string;
+  condition_id?: string;
   slug?: string;
   url?: string;
   question?: string;
@@ -68,6 +70,9 @@ interface RawPolymarketMarket {
   bestBid?: number | string;
   bestAsk?: number | string;
   price?: number | string;
+  clobTokenIds?: string[] | string;
+  tokenIds?: string[] | string;
+  assetIds?: string[] | string;
   tags?: string[] | string;
   events?: Array<{
     title?: string;
@@ -119,6 +124,7 @@ interface RefreshEnv {
   COASENSUS_SMART_FIREHOSE_WS_URL?: string;
   COASENSUS_SMART_FIREHOSE_WARMUP_MS?: string;
   COASENSUS_SMART_FIREHOSE_MAX_MESSAGES?: string;
+  COASENSUS_SMART_FIREHOSE_MAX_ASSET_IDS?: string;
 }
 
 interface FetchOptions {
@@ -147,15 +153,18 @@ interface SmartFirehoseConfig {
   websocketUrl: string;
   warmupMs: number;
   maxMessages: number;
+  maxAssetIds: number;
 }
 
 interface FirehoseOverlayMetrics {
   enabled: boolean;
   attempted: boolean;
   connected: boolean;
+  subscribedAssetIds: number;
   websocketUrl: string;
   warmupMs: number;
   maxMessages: number;
+  maxAssetIds: number;
   messages: number;
   parseFailures: number;
   updatesApplied: number;
@@ -165,7 +174,8 @@ interface FirehoseOverlayMetrics {
 }
 
 interface MarketChannelUpdate {
-  marketId: string;
+  marketId: string | null;
+  assetId: string | null;
   lastTradePrice: number | null;
   bestBid: number | null;
   bestAsk: number | null;
@@ -354,6 +364,7 @@ const DEFAULT_SMART_FIREHOSE_ENABLED = false;
 const DEFAULT_SMART_FIREHOSE_WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market";
 const DEFAULT_SMART_FIREHOSE_WARMUP_MS = 2_000;
 const DEFAULT_SMART_FIREHOSE_MAX_MESSAGES = 120;
+const DEFAULT_SMART_FIREHOSE_MAX_ASSET_IDS = 400;
 
 const EXCLUSION_TOKENS = [
   "meme",
@@ -445,6 +456,7 @@ const FIREHOSE_MARKET_ID_FALLBACK_KEYS = ["id"];
 const FIREHOSE_LAST_TRADE_PRICE_KEYS = ["last_trade_price", "lastTradePrice", "price", "p"];
 const FIREHOSE_BEST_BID_KEYS = ["best_bid", "bestBid", "bid"];
 const FIREHOSE_BEST_ASK_KEYS = ["best_ask", "bestAsk", "ask"];
+const FIREHOSE_ASSET_ID_KEYS = ["asset_id", "assetId", "token_id", "tokenId"];
 
 function asPositiveInt(value: string | undefined, fallback: number, min: number, max: number): number {
   const parsed = Number(value);
@@ -872,6 +884,12 @@ function resolveSmartFirehoseConfig(env: RefreshEnv): SmartFirehoseConfig {
       1,
       1_000
     ),
+    maxAssetIds: asPositiveInt(
+      env.COASENSUS_SMART_FIREHOSE_MAX_ASSET_IDS,
+      DEFAULT_SMART_FIREHOSE_MAX_ASSET_IDS,
+      1,
+      5_000
+    ),
   };
 }
 
@@ -1084,9 +1102,11 @@ function defaultFirehoseMetrics(config: SmartFirehoseConfig, skippedReason: stri
     enabled: config.enabled,
     attempted: false,
     connected: false,
+    subscribedAssetIds: 0,
     websocketUrl: config.websocketUrl,
     warmupMs: config.warmupMs,
     maxMessages: config.maxMessages,
+    maxAssetIds: config.maxAssetIds,
     messages: 0,
     parseFailures: 0,
     updatesApplied: 0,
@@ -1099,24 +1119,70 @@ function defaultFirehoseMetrics(config: SmartFirehoseConfig, skippedReason: stri
 function buildRawMarketMap(markets: RawPolymarketMarket[]): Map<string, RawPolymarketMarket> {
   const byId = new Map<string, RawPolymarketMarket>();
   for (const market of markets) {
-    const id = asStringId(market.id ?? market.marketId);
-    if (!id) {
-      continue;
+    const keys = [
+      asStringId(market.id ?? market.marketId),
+      asStringId(market.conditionId ?? market.condition_id),
+    ];
+    for (const key of keys) {
+      if (key) {
+        byId.set(key, market);
+      }
     }
-    byId.set(id, market);
   }
   return byId;
 }
 
+function extractAssetIdsFromMarket(market: RawPolymarketMarket): string[] {
+  const values = [
+    ...parseStringArray(market.clobTokenIds),
+    ...parseStringArray(market.tokenIds),
+    ...parseStringArray(market.assetIds),
+  ];
+
+  const deduped = new Set<string>();
+  for (const value of values) {
+    const normalized = String(value).trim();
+    if (normalized.length > 0) {
+      deduped.add(normalized);
+    }
+  }
+  return [...deduped];
+}
+
+function buildAssetToMarketKeyMap(
+  markets: RawPolymarketMarket[],
+  byId: Map<string, RawPolymarketMarket>
+): Map<string, string> {
+  const byAsset = new Map<string, string>();
+
+  for (const market of markets) {
+    const preferredKey =
+      asStringId(market.conditionId ?? market.condition_id) ??
+      asStringId(market.id ?? market.marketId);
+    if (!preferredKey || !byId.has(preferredKey)) {
+      continue;
+    }
+    for (const assetId of extractAssetIdsFromMarket(market)) {
+      byAsset.set(assetId, preferredKey);
+    }
+  }
+
+  return byAsset;
+}
+
 function applyMarketUpdates(
   byId: Map<string, RawPolymarketMarket>,
+  byAsset: Map<string, string>,
   updates: MarketChannelUpdate[]
 ): { updatesApplied: number; unknownMarketUpdates: number } {
   let updatesApplied = 0;
   let unknownMarketUpdates = 0;
 
   for (const update of updates) {
-    const market = byId.get(update.marketId);
+    const resolvedKey =
+      (update.marketId && byId.has(update.marketId) ? update.marketId : null) ??
+      (update.assetId ? byAsset.get(update.assetId) ?? null : null);
+    const market = resolvedKey ? byId.get(resolvedKey) : undefined;
     if (!market) {
       unknownMarketUpdates += 1;
       continue;
@@ -1159,9 +1225,11 @@ async function overlayWithSmartFirehose(
     enabled: true,
     attempted: true,
     connected: false,
+    subscribedAssetIds: 0,
     websocketUrl: config.websocketUrl,
     warmupMs: config.warmupMs,
     maxMessages: config.maxMessages,
+    maxAssetIds: config.maxAssetIds,
     messages: 0,
     parseFailures: 0,
     updatesApplied: 0,
@@ -1172,6 +1240,9 @@ async function overlayWithSmartFirehose(
 
   const started = Date.now();
   const byId = buildRawMarketMap(markets);
+  const byAsset = buildAssetToMarketKeyMap(markets, byId);
+  const subscribedAssetIds = [...byAsset.keys()].slice(0, config.maxAssetIds);
+  metrics.subscribedAssetIds = subscribedAssetIds.length;
   let socket: FirehoseSocketLike | null = null;
   let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
 
@@ -1202,6 +1273,18 @@ async function overlayWithSmartFirehose(
 
     socket.onopen = () => {
       metrics.connected = true;
+      if (socket?.send && subscribedAssetIds.length > 0) {
+        try {
+          socket.send(
+            JSON.stringify({
+              type: "market",
+              assets_ids: subscribedAssetIds,
+            })
+          );
+        } catch (error) {
+          finish(`subscribe_error:${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
     };
 
     socket.onmessage = (event) => {
@@ -1228,7 +1311,7 @@ async function overlayWithSmartFirehose(
 
       const updates = extractMarketUpdatesFromPayload(payload);
       if (updates.length > 0) {
-        const applied = applyMarketUpdates(byId, updates);
+        const applied = applyMarketUpdates(byId, byAsset, updates);
         metrics.updatesApplied += applied.updatesApplied;
         metrics.unknownMarketUpdates += applied.unknownMarketUpdates;
       }
@@ -1378,35 +1461,43 @@ function messageEventToText(event: unknown): string | null {
 
 function extractMarketUpdatesFromPayload(payload: unknown): MarketChannelUpdate[] {
   const records = deepCollectRecords(payload);
-  const byMarketId = new Map<string, MarketChannelUpdate>();
+  const byKey = new Map<string, MarketChannelUpdate>();
 
   for (const record of records) {
     const primaryId = pickFirstString(record, FIREHOSE_MARKET_ID_PRIMARY_KEYS);
     const fallbackId = pickFirstString(record, FIREHOSE_MARKET_ID_FALLBACK_KEYS);
-    const marketId = primaryId ?? fallbackId;
-    if (!marketId) {
-      continue;
-    }
+    const assetId = pickFirstString(record, FIREHOSE_ASSET_ID_KEYS);
+    const marketId = primaryId ?? fallbackId ?? null;
 
     const lastTradePrice = pickFirstNumber(record, FIREHOSE_LAST_TRADE_PRICE_KEYS);
     const bestBid = pickFirstNumber(record, FIREHOSE_BEST_BID_KEYS);
     const bestAsk = pickFirstNumber(record, FIREHOSE_BEST_ASK_KEYS);
     const hasPriceSignal = lastTradePrice !== null || bestBid !== null || bestAsk !== null;
 
-    // `id` is too generic, so only allow fallback ids when there is an explicit price signal.
-    if (!primaryId && !hasPriceSignal) {
+    if (!marketId && !assetId) {
       continue;
     }
 
-    byMarketId.set(marketId, {
+    // `id` is too generic, so only allow fallback ids when there is an explicit price signal.
+    if (!primaryId && fallbackId && !assetId && !hasPriceSignal) {
+      continue;
+    }
+
+    if (!hasPriceSignal) {
+      continue;
+    }
+
+    const key = marketId ?? `asset:${assetId}`;
+    byKey.set(key, {
       marketId,
+      assetId,
       lastTradePrice,
       bestBid,
       bestAsk,
     });
   }
 
-  return [...byMarketId.values()];
+  return [...byKey.values()];
 }
 
 function parseStringArray(value: unknown): string[] {
