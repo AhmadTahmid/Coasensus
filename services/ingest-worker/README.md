@@ -35,6 +35,17 @@ Storage mode options:
 - `INGEST_PERSIST_SQLITE` (default: `1`)
 - `INGEST_SQLITE_DB_PATH` (default: `infra/db/coasensus.sqlite`)
 
+Smart Firehose (foundation pass):
+- `INGEST_USE_SMART_FIREHOSE` (default: `0`; set `1` to enable market-channel client)
+- `INGEST_FIREHOSE_WS_URL` (default: `wss://ws-subscriptions-clob.polymarket.com/ws/market`)
+- `INGEST_FIREHOSE_STALENESS_MS` (default: `90000`)
+- `INGEST_FIREHOSE_RECONNECT_BASE_MS` (default: `800`)
+- `INGEST_FIREHOSE_RECONNECT_MAX_MS` (default: `15000`)
+- `INGEST_FIREHOSE_WARMUP_MS` (default: `4000`)
+- `INGEST_FIREHOSE_SUBSCRIPTION_JSON` (optional JSON object to send on socket open)
+
+When Smart Firehose is enabled, ingestion uses websocket snapshot data if it is fresh; otherwise it falls back to REST fetch automatically.
+
 ## Persistence outputs
 Each persisted run writes:
 - `infra/db/local/snapshots/<run-id>.json`

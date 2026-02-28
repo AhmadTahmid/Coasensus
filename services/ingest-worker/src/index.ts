@@ -1,6 +1,7 @@
 import type { Market } from "@coasensus/shared-types";
 import { normalizeActiveMarkets, type RawPolymarketMarket } from "./normalize.js";
 import { fetchActiveMarkets, type PolymarketFetchOptions } from "./polymarket-client.js";
+import { type FirehoseIngestionSource, type SmartFirehoseClient } from "./polymarket-firehose.js";
 import {
   persistIngestionRun,
   type PersistIngestionOptions,
@@ -18,6 +19,7 @@ export interface IngestSnapshot {
   rawCount: number;
   normalizedCount: number;
   droppedCount: number;
+  source: FirehoseIngestionSource;
 }
 
 export interface IngestMetrics {
@@ -35,6 +37,11 @@ export interface RunAndPersistOptions extends PersistIngestionOptions, PersistSq
   persistSqlite?: boolean;
 }
 
+export interface RunIngestionOptions extends PolymarketFetchOptions {
+  firehoseClient?: SmartFirehoseClient;
+  firehoseMaxStalenessMs?: number;
+}
+
 export interface IngestRunResult {
   snapshot: IngestSnapshot;
   rawMarkets: RawPolymarketMarket[];
@@ -44,7 +51,11 @@ export interface IngestRunResult {
   metrics: IngestMetrics;
 }
 
-export function buildIngestSnapshot(rawMarkets: RawPolymarketMarket[], pagesFetched = 0): IngestSnapshot {
+export function buildIngestSnapshot(
+  rawMarkets: RawPolymarketMarket[],
+  pagesFetched = 0,
+  source: FirehoseIngestionSource = "rest_fallback"
+): IngestSnapshot {
   const result = normalizeActiveMarkets(rawMarkets);
   return {
     fetchedAt: new Date().toISOString(),
@@ -52,13 +63,21 @@ export function buildIngestSnapshot(rawMarkets: RawPolymarketMarket[], pagesFetc
     rawCount: rawMarkets.length,
     normalizedCount: result.markets.length,
     droppedCount: result.dropped,
+    source,
   };
 }
 
-export async function runIngestionOnce(options: PolymarketFetchOptions = {}): Promise<IngestRunResult> {
+export async function runIngestionOnce(options: RunIngestionOptions = {}): Promise<IngestRunResult> {
+  const { firehoseClient, firehoseMaxStalenessMs, ...fetchOptions } = options;
+
   const totalStarted = Date.now();
   const fetchStarted = Date.now();
-  const fetchResult = await fetchActiveMarkets(options);
+  const fetchResult = firehoseClient
+    ? await firehoseClient.fetchForIngestion(fetchOptions, firehoseMaxStalenessMs)
+    : {
+        ...(await fetchActiveMarkets(fetchOptions)),
+        source: "rest_fallback" as const,
+      };
   const fetchMs = Date.now() - fetchStarted;
 
   const normalizeStarted = Date.now();
@@ -68,7 +87,7 @@ export async function runIngestionOnce(options: PolymarketFetchOptions = {}): Pr
   const finishedAt = new Date().toISOString();
 
   return {
-    snapshot: buildIngestSnapshot(fetchResult.markets, fetchResult.pagesFetched),
+    snapshot: buildIngestSnapshot(fetchResult.markets, fetchResult.pagesFetched, fetchResult.source),
     rawMarkets: fetchResult.markets,
     normalizedMarkets: normalizedResult.markets,
     metrics: {
@@ -84,7 +103,7 @@ export async function runIngestionOnce(options: PolymarketFetchOptions = {}): Pr
 }
 
 export async function runAndPersistIngestion(
-  fetchOptions: PolymarketFetchOptions = {},
+  fetchOptions: RunIngestionOptions = {},
   persistOptions: RunAndPersistOptions = {}
 ): Promise<IngestRunResult> {
   const persistJson = persistOptions.persistJson ?? true;
@@ -150,4 +169,6 @@ export type {
   PersistedIngestionResult,
   PersistedSqliteResult,
   PolymarketFetchOptions,
+  FirehoseIngestionSource,
+  SmartFirehoseClient,
 };

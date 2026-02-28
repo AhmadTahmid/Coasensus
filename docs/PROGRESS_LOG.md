@@ -879,3 +879,37 @@
      - `docs/POST_V2_BACKLOG.md`.
    - `node --check apps/web/public/app.js` => success.
    - `npm run check` => success.
+302. Started `MILESTONE-SMART-FIREHOSE-016` on branch `agent/smart-firehose-foundation-pass1`.
+303. Added Smart Firehose foundation module:
+   - new file: `services/ingest-worker/src/polymarket-firehose.ts`.
+   - capabilities:
+     - managed Polymarket market-channel WebSocket client
+     - reconnect with exponential backoff
+     - in-memory market snapshot + freshness checks
+     - staleness-aware REST fallback (`fetchForIngestion`) to preserve deterministic ingest runs.
+304. Wired ingestion runner to optionally consume firehose snapshot:
+   - `services/ingest-worker/src/index.ts` now supports:
+     - `RunIngestionOptions.firehoseClient`
+     - `RunIngestionOptions.firehoseMaxStalenessMs`
+     - snapshot source tracking (`firehose_snapshot` vs `rest_fallback`).
+   - smoke runner now supports firehose env flags in `services/ingest-worker/src/smoke.ts`:
+     - `INGEST_USE_SMART_FIREHOSE`
+     - `INGEST_FIREHOSE_WS_URL`
+     - `INGEST_FIREHOSE_STALENESS_MS`
+     - `INGEST_FIREHOSE_RECONNECT_BASE_MS`
+     - `INGEST_FIREHOSE_RECONNECT_MAX_MS`
+     - `INGEST_FIREHOSE_WARMUP_MS`
+     - `INGEST_FIREHOSE_SUBSCRIPTION_JSON`.
+305. Added regression coverage for Smart Firehose:
+   - new test file: `services/ingest-worker/src/polymarket-firehose.test.ts`.
+   - coverage includes:
+     - nested market-message parsing
+     - fresh snapshot usage without REST calls
+     - stale snapshot REST fallback
+     - websocket-applied price updates
+     - reconnect scheduling on socket close.
+306. Validation:
+   - `npm -C services/ingest-worker run typecheck` => success.
+   - `npm -C services/ingest-worker run lint` => success.
+   - `npm -C services/ingest-worker run test` => success (25 tests).
+   - `npm run check` => success (repo-wide).

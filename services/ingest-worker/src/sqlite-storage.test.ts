@@ -34,6 +34,7 @@ describe("sqlite persistence", () => {
           rawCount: 2,
           normalizedCount: 1,
           droppedCount: 1,
+          source: "rest_fallback",
         },
         rawMarkets: [
           { id: "raw-1", question: "raw q1" },
