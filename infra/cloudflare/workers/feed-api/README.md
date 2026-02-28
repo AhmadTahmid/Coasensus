@@ -30,12 +30,14 @@ Reads from D1 tables:
    - `COASENSUS_BOUNCER_MAX_MARKET_AGE_DAYS`
 4. Optional Smart Firehose overlay (worker-side, best-effort):
    - keeps REST ingest as the source of truth, then applies short websocket price updates during refresh warmup.
+   - subscribes to Polymarket market websocket using `assets_ids` derived from fetched market token ids.
    - automatically falls back to REST-only when websocket is unavailable or yields no updates.
    - controls:
      - `COASENSUS_SMART_FIREHOSE_ENABLED` (`0` default)
      - `COASENSUS_SMART_FIREHOSE_WS_URL` (default `wss://ws-subscriptions-clob.polymarket.com/ws/market`)
      - `COASENSUS_SMART_FIREHOSE_WARMUP_MS` (default `2000`)
      - `COASENSUS_SMART_FIREHOSE_MAX_MESSAGES` (default `120`)
+     - `COASENSUS_SMART_FIREHOSE_MAX_ASSET_IDS` (default `400`)
 5. LLM semantic layer is optional and disabled by default:
    - `COASENSUS_LLM_ENABLED=0` (enable with `1`)
    - `COASENSUS_LLM_PROVIDER` (`openai` or `gemini`, default `openai`)
