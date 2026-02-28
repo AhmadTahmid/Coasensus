@@ -931,3 +931,14 @@
 311. Validation:
    - `npm run check` => success (repo-wide).
    - `npx wrangler deploy --dry-run --config infra/cloudflare/wrangler.api.ci.jsonc --env staging` => success.
+312. Enabled Smart Firehose in staging configuration only:
+   - `infra/cloudflare/wrangler.api.jsonc` (`env.staging.vars.COASENSUS_SMART_FIREHOSE_ENABLED=1`)
+   - `infra/cloudflare/wrangler.api.ci.jsonc` (`env.staging.vars.COASENSUS_SMART_FIREHOSE_ENABLED=1`)
+   - production remains disabled (`COASENSUS_SMART_FIREHOSE_ENABLED=0`).
+313. Staging rollout verification for Smart Firehose:
+   - direct staging deploy: `npx wrangler deploy --config infra/cloudflare/wrangler.api.jsonc --env staging` => success.
+   - staging refresh telemetry confirms firehose runtime path is active:
+     - `enabled=true`
+     - `attempted=true`
+     - `connected=true`
+   - monitor workflow: `Monitor Staging` run `22525950039` => success.
