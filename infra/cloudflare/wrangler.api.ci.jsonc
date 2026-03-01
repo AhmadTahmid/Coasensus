@@ -55,6 +55,12 @@
   "env": {
     "staging": {
       "name": "coasensus-api-staging",
+      "routes": [
+        {
+          "pattern": "staging.coasensus.com/api/*",
+          "zone_name": "coasensus.com"
+        }
+      ],
       "vars": {
         "COASENSUS_APP_ORIGIN": "https://staging.coasensus.com",
         "COASENSUS_DEFAULT_PAGE_SIZE": "20",
@@ -99,6 +105,9 @@
         "COASENSUS_SMART_FIREHOSE_MAX_MESSAGES": "400",
         "COASENSUS_SMART_FIREHOSE_MAX_ASSET_IDS": "800"
       },
+      "triggers": {
+        "crons": ["*/30 * * * *"]
+      },
       "d1_databases": [
         {
           "binding": "DB",
@@ -110,6 +119,12 @@
     },
     "production": {
       "name": "coasensus-api",
+      "routes": [
+        {
+          "pattern": "coasensus.com/api/*",
+          "zone_name": "coasensus.com"
+        }
+      ],
       "vars": {
         "COASENSUS_APP_ORIGIN": "https://coasensus.com",
         "COASENSUS_DEFAULT_PAGE_SIZE": "20",
@@ -153,6 +168,9 @@
         "COASENSUS_SMART_FIREHOSE_WARMUP_MS": "5000",
         "COASENSUS_SMART_FIREHOSE_MAX_MESSAGES": "200",
         "COASENSUS_SMART_FIREHOSE_MAX_ASSET_IDS": "400"
+      },
+      "triggers": {
+        "crons": ["*/15 * * * *"]
       },
       "d1_databases": [
         {

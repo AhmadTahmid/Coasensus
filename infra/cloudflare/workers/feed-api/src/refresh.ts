@@ -1728,6 +1728,24 @@ function normalizeActiveMarkets(rawMarkets: RawPolymarketMarket[]): Normalizatio
   return { markets, dropped };
 }
 
+function dedupeCuratedFeedItems(items: CuratedFeedItem[]): { items: CuratedFeedItem[]; duplicatesDropped: number } {
+  const byMarketId = new Map<string, CuratedFeedItem>();
+  let duplicatesDropped = 0;
+
+  for (const item of items) {
+    if (byMarketId.has(item.id)) {
+      duplicatesDropped += 1;
+      continue;
+    }
+    byMarketId.set(item.id, item);
+  }
+
+  return {
+    items: [...byMarketId.values()],
+    duplicatesDropped,
+  };
+}
+
 function clampInt(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, Math.round(value)));
 }
@@ -2981,7 +2999,16 @@ export async function refreshCuratedFeed(env: RefreshEnv): Promise<RefreshSummar
 
   const runId = new Date().toISOString().replace(/[:.]/g, "-");
   const fetchedAt = new Date().toISOString();
-  const allItems = [...curation.curated, ...curation.rejected];
+  const dedupedItems = dedupeCuratedFeedItems([...curation.curated, ...curation.rejected]);
+  const allItems = dedupedItems.items;
+  if (dedupedItems.duplicatesDropped > 0) {
+    console.warn("Dropped duplicate market ids before persistence", {
+      runId,
+      duplicatesDropped: dedupedItems.duplicatesDropped,
+    });
+  }
+  const curatedCount = allItems.filter((item) => item.isCurated).length;
+  const rejectedCount = allItems.length - curatedCount;
 
   const persistStarted = Date.now();
   await replaceCuratedFeedSnapshot(
@@ -3004,8 +3031,8 @@ export async function refreshCuratedFeed(env: RefreshEnv): Promise<RefreshSummar
     bouncerDroppedCount: fetched.droppedByBouncer,
     normalizedCount: normalized.markets.length,
     droppedCount: normalized.dropped + fetched.droppedByBouncer,
-    curatedCount: curation.curated.length,
-    rejectedCount: curation.rejected.length,
+    curatedCount,
+    rejectedCount,
     semantic: semantic.metrics,
     ingestion: {
       source: fetched.source ?? "rest_only",
