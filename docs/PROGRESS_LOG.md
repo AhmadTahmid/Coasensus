@@ -964,3 +964,25 @@
    - owner: `AhmadTahmid`
    - exception expiry: `2026-03-01T19:30:00Z`
    - condition to clear exception: next clean 24h `Launch Stability` window with `overallReady=true`.
+318. Production freshness incident triage (`2026-03-01`):
+   - `Monitor Production` run `22538278798` failed with `ALERT_STALE_FEED` (`115.1 min > 90 min`).
+   - manual `POST /api/admin/refresh-feed` returned `500` with `UNIQUE constraint failed: curated_feed.market_id`.
+319. Immediate runtime repair:
+   - deployed production Worker with explicit cron/triggers via `wrangler.api.jsonc`.
+   - confirmed production cron attachment in deploy output (`schedule: */15 * * * *`).
+320. Refresh pipeline hardening for duplicate IDs:
+   - updated `infra/cloudflare/workers/feed-api/src/refresh.ts` to dedupe duplicate `market_id` items before persistence.
+   - summary counts now derive from the deduped set to keep telemetry consistent with persisted rows.
+321. CI config correction for sustainable deploys:
+   - `infra/cloudflare/wrangler.api.ci.jsonc` now includes cron `triggers` for staging/production.
+   - reverted CI `routes` mutations to avoid failing deploys with zone-limited API token permissions.
+322. Verification after fix:
+   - manual production refresh returned `200` with fresh run `2026-03-01T07-49-01-032Z`.
+   - monitor runs succeeded:
+     - production `22538939076`
+     - staging `22538939191`
+   - `Deploy Cloudflare` run `22538925757` succeeded after CI config adjustment.
+323. Current gate status:
+   - `Launch Stability` remains `overallReady=false` (`22538945762`) due historical 24h window debt:
+     - production reasons: `run_count_below_min`, `failures_exceeded`, `empty_hours_exceeded`, `max_gap_exceeded`
+     - staging reasons: `empty_hours_exceeded`, `max_gap_exceeded`.
