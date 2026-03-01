@@ -986,3 +986,17 @@
    - `Launch Stability` remains `overallReady=false` (`22538945762`) due historical 24h window debt:
      - production reasons: `run_count_below_min`, `failures_exceeded`, `empty_hours_exceeded`, `max_gap_exceeded`
      - staging reasons: `empty_hours_exceeded`, `max_gap_exceeded`.
+324. Added launch-stability readiness ETA estimation in `scripts/launch-stability.mjs`:
+   - new per-environment config knobs:
+     - `COASENSUS_STABILITY_PRODUCTION_INTERVAL_MINUTES` (default `15`)
+     - `COASENSUS_STABILITY_STAGING_INTERVAL_MINUTES` (default `30`)
+   - report now includes:
+     - `estimatedReadyAt` per workflow
+     - `estimatedOverallReadyAt` across workflows
+     - explicit estimate assumptions in JSON + markdown artifact.
+325. Local launch-stability run after ETA update (`2026-03-01T07:59:51.953Z`):
+   - `overallReady=false` (expected, historical debt still in active 24h window)
+   - estimated readiness times (assuming no new failures and successful scheduled cadence):
+     - staging: `2026-03-02T04:39:47.407Z`
+     - production: `2026-03-02T07:14:47.407Z`
+     - overall: `2026-03-02T07:14:47.407Z`.

@@ -19,6 +19,12 @@ const definitions = [
     workflow: process.env.COASENSUS_STABILITY_PRODUCTION_WORKFLOW || "monitor-production.yml",
     maxGapMinutes: asPositiveInt(process.env.COASENSUS_STABILITY_PRODUCTION_MAX_GAP_MINUTES, 40, 5, 240),
     minRuns: asPositiveInt(process.env.COASENSUS_STABILITY_PRODUCTION_MIN_RUNS, 80, 1, 1000),
+    expectedIntervalMinutes: asPositiveInt(
+      process.env.COASENSUS_STABILITY_PRODUCTION_INTERVAL_MINUTES,
+      15,
+      1,
+      240
+    ),
   },
   {
     key: "staging",
@@ -26,6 +32,12 @@ const definitions = [
     workflow: process.env.COASENSUS_STABILITY_STAGING_WORKFLOW || "monitor-staging.yml",
     maxGapMinutes: asPositiveInt(process.env.COASENSUS_STABILITY_STAGING_MAX_GAP_MINUTES, 70, 5, 240),
     minRuns: asPositiveInt(process.env.COASENSUS_STABILITY_STAGING_MIN_RUNS, 40, 1, 1000),
+    expectedIntervalMinutes: asPositiveInt(
+      process.env.COASENSUS_STABILITY_STAGING_INTERVAL_MINUTES,
+      30,
+      1,
+      240
+    ),
   },
 ];
 
@@ -241,6 +253,83 @@ function summarizeRuns(runs, { nowMs, sinceMs, hours, maxGapMinutes, minRuns }) 
   };
 }
 
+function buildSyntheticSuccessRuns(startExclusiveMs, endInclusiveMs, intervalMinutes) {
+  if (!Number.isFinite(intervalMinutes) || intervalMinutes <= 0 || endInclusiveMs <= startExclusiveMs) {
+    return [];
+  }
+
+  const intervalMs = intervalMinutes * 60 * 1000;
+  let cursorMs = Math.ceil(startExclusiveMs / intervalMs) * intervalMs;
+  if (cursorMs <= startExclusiveMs) {
+    cursorMs += intervalMs;
+  }
+
+  const synthetic = [];
+  while (cursorMs <= endInclusiveMs) {
+    const iso = new Date(cursorMs).toISOString();
+    synthetic.push({
+      id: -cursorMs,
+      name: "Synthetic Scheduled Success",
+      runNumber: 0,
+      event: "synthetic",
+      conclusion: "success",
+      createdAt: iso,
+      updatedAt: iso,
+      url: "about:synthetic",
+    });
+    cursorMs += intervalMs;
+  }
+  return synthetic;
+}
+
+function estimateEarliestReadyAt({
+  historicalRuns,
+  nowMs,
+  windowHours: currentWindowHours,
+  maxGapMinutes,
+  minRuns,
+  expectedIntervalMinutes,
+}) {
+  const horizonHours = Math.max(currentWindowHours * 2, 48);
+  const horizonMs = horizonHours * 60 * 60 * 1000;
+  const stepMinutes = 5;
+  const stepMs = stepMinutes * 60 * 1000;
+
+  for (let candidateNowMs = nowMs; candidateNowMs <= nowMs + horizonMs; candidateNowMs += stepMs) {
+    const syntheticRuns = buildSyntheticSuccessRuns(nowMs, candidateNowMs, expectedIntervalMinutes);
+    const combined = [...historicalRuns, ...syntheticRuns].sort(
+      (a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt)
+    );
+    const candidateSinceMs = candidateNowMs - currentWindowHours * 60 * 60 * 1000;
+    const windowedRuns = combined.filter((run) => {
+      const runMs = Date.parse(run.createdAt);
+      return Number.isFinite(runMs) && runMs >= candidateSinceMs && runMs <= candidateNowMs;
+    });
+    const summary = summarizeRuns(windowedRuns, {
+      nowMs: candidateNowMs,
+      sinceMs: candidateSinceMs,
+      hours: currentWindowHours,
+      maxGapMinutes,
+      minRuns,
+    });
+    if (summary.ready) {
+      return {
+        at: new Date(candidateNowMs).toISOString(),
+        assumptions: `no new monitor failures and successful ${expectedIntervalMinutes}m cadence`,
+        stepMinutes,
+        horizonHours,
+      };
+    }
+  }
+
+  return {
+    at: null,
+    assumptions: `no new monitor failures and successful ${expectedIntervalMinutes}m cadence`,
+    stepMinutes,
+    horizonHours,
+  };
+}
+
 function renderMarkdown(report) {
   const lines = [];
   lines.push("# Launch Stability Status");
@@ -250,12 +339,13 @@ function renderMarkdown(report) {
   lines.push(`- Branch: ${report.branch}`);
   lines.push(`- Window: ${report.windowHours}h`);
   lines.push(`- Overall Ready: ${report.overallReady ? "YES" : "NO"}`);
+  lines.push(`- Estimated Overall Ready At: ${report.estimatedOverallReadyAt || "unknown"}`);
   lines.push("");
-  lines.push("| Workflow | Ready | Runs | Success | Failures | Max Gap (min) | Empty Hours |");
-  lines.push("|---|---:|---:|---:|---:|---:|---:|");
+  lines.push("| Workflow | Ready | Runs | Success | Failures | Max Gap (min) | Empty Hours | Est. Ready At |");
+  lines.push("|---|---:|---:|---:|---:|---:|---:|---|");
   for (const workflow of report.workflows) {
     lines.push(
-      `| ${workflow.label} | ${workflow.ready ? "YES" : "NO"} | ${workflow.totalCount} | ${workflow.successCount} | ${workflow.failureCount} | ${workflow.maxGapObservedMinutes} | ${workflow.emptyHours.length} |`
+      `| ${workflow.label} | ${workflow.ready ? "YES" : "NO"} | ${workflow.totalCount} | ${workflow.successCount} | ${workflow.failureCount} | ${workflow.maxGapObservedMinutes} | ${workflow.emptyHours.length} | ${workflow.estimatedReadyAt || "unknown"} |`
     );
   }
 
@@ -264,6 +354,8 @@ function renderMarkdown(report) {
     lines.push(`## ${workflow.label}`);
     lines.push(`- Ready: ${workflow.ready ? "YES" : "NO"}`);
     lines.push(`- Reasons: ${workflow.reasons.length ? workflow.reasons.join(", ") : "none"}`);
+    lines.push(`- Estimated Ready At: ${workflow.estimatedReadyAt || "unknown"}`);
+    lines.push(`- Estimate Assumptions: ${workflow.estimateAssumptions}`);
     if (workflow.latestRun) {
       lines.push(`- Latest run: ${workflow.latestRun.createdAt} (${workflow.latestRun.conclusion})`);
       lines.push(`- Latest run URL: ${workflow.latestRun.url}`);
@@ -302,13 +394,34 @@ async function main() {
       maxGapMinutes: definition.maxGapMinutes,
       minRuns: definition.minRuns,
     });
+    const estimate = estimateEarliestReadyAt({
+      historicalRuns: runs,
+      nowMs,
+      windowHours,
+      maxGapMinutes: definition.maxGapMinutes,
+      minRuns: definition.minRuns,
+      expectedIntervalMinutes: definition.expectedIntervalMinutes,
+    });
     workflows.push({
       key: definition.key,
       label: definition.label,
       workflow: definition.workflow,
+      expectedIntervalMinutes: definition.expectedIntervalMinutes,
+      estimatedReadyAt: estimate.at,
+      estimateAssumptions: estimate.assumptions,
+      estimateStepMinutes: estimate.stepMinutes,
+      estimateHorizonHours: estimate.horizonHours,
       ...summary,
     });
   }
+
+  const estimatedOverallReadyAt = (() => {
+    const timestamps = workflows.map((workflow) => Date.parse(workflow.estimatedReadyAt || ""));
+    if (timestamps.some((value) => !Number.isFinite(value))) {
+      return null;
+    }
+    return new Date(Math.max(...timestamps)).toISOString();
+  })();
 
   const report = {
     generatedAt: new Date().toISOString(),
@@ -318,6 +431,7 @@ async function main() {
     maxAllowedFailures,
     maxAllowedEmptyHours,
     overallReady: workflows.every((workflow) => workflow.ready),
+    estimatedOverallReadyAt,
     workflows,
   };
 
