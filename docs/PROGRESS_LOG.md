@@ -1000,3 +1000,17 @@
      - staging: `2026-03-02T04:39:47.407Z`
      - production: `2026-03-02T07:14:47.407Z`
      - overall: `2026-03-02T07:14:47.407Z`.
+326. Re-check at scheduled gate time (`2026-03-02`) found new overnight monitor debt:
+   - production monitor failures persisted (`ALERT_STALE_FEED`), including run `22564432791`.
+   - latest launch-stability snapshot (`22565569328`) now estimates:
+     - staging ready at `2026-03-03T06:20:09.755Z`
+     - production ready at `2026-03-03T06:40:09.755Z`
+     - overall ready at `2026-03-03T06:40:09.755Z`.
+327. Added stale auto-recovery to monitor script (`scripts/monitor-production.mjs`):
+   - new behavior: if stale threshold is exceeded, monitor triggers `POST /api/admin/refresh-feed` once using existing admin token, then re-checks semantic telemetry before deciding pass/fail.
+   - new env controls:
+     - `COASENSUS_MONITOR_AUTO_RECOVER_STALE` (default enabled)
+     - `COASENSUS_MONITOR_REFRESH_TIMEOUT_MS` (default `45000`).
+328. Post-patch spot validation:
+   - local monitor execution against production with current admin token returned `ok=true`.
+   - latest production run timestamp observed in telemetry: `2026-03-02T07:19:16.569Z`.

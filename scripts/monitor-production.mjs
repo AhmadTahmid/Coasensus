@@ -6,6 +6,8 @@ const maxStaleMinutes = Number(process.env.COASENSUS_MAX_STALE_MINUTES || "90");
 const semanticFailureStreak = Number.parseInt(process.env.COASENSUS_SEMANTIC_FAILURE_STREAK || "3", 10);
 const categoryDominanceTopN = Number.parseInt(process.env.COASENSUS_CATEGORY_DOMINANCE_TOP_N || "20", 10);
 const categoryDominanceMaxShare = Number(process.env.COASENSUS_CATEGORY_DOMINANCE_MAX_SHARE || "0.65");
+const monitorAutoRecoverStale = process.env.COASENSUS_MONITOR_AUTO_RECOVER_STALE !== "0";
+const monitorRefreshTimeoutMs = Number.parseInt(process.env.COASENSUS_MONITOR_REFRESH_TIMEOUT_MS || "45000", 10);
 
 function toError(message, detail, context) {
   const error = new Error(message);
@@ -56,6 +58,25 @@ async function fetchJson(url, options) {
   return data;
 }
 
+async function triggerAdminRefresh(baseUrlValue, tokenValue, timeoutMs) {
+  const refreshUrl = `${baseUrlValue}/api/admin/refresh-feed`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const payload = await fetchJson(refreshUrl, {
+      method: "POST",
+      headers: {
+        "X-Admin-Token": tokenValue,
+      },
+      signal: controller.signal,
+    });
+    ensure(payload?.ok === true, "Admin refresh response missing ok=true", payload);
+    return payload;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function ensure(condition, message, detail) {
   if (!condition) {
     throw toError(message, detail);
@@ -103,6 +124,10 @@ async function main() {
       Number.isFinite(categoryDominanceMaxShare) && categoryDominanceMaxShare > 0 && categoryDominanceMaxShare <= 1,
       "Invalid COASENSUS_CATEGORY_DOMINANCE_MAX_SHARE"
     );
+    ensure(
+      Number.isInteger(monitorRefreshTimeoutMs) && monitorRefreshTimeoutMs > 0,
+      "Invalid COASENSUS_MONITOR_REFRESH_TIMEOUT_MS"
+    );
 
     step = "check-health";
     const health = await fetchJson(healthUrl);
@@ -123,27 +148,74 @@ async function main() {
     );
 
     step = "check-semantic-metrics";
-    const telemetry = await fetchJson(metricsUrl, {
+    let telemetry = await fetchJson(metricsUrl, {
       headers: {
         "X-Admin-Token": adminToken,
       },
     });
-    const runs = Array.isArray(telemetry?.runs) ? telemetry.runs : [];
-    const latest = runs[0] ?? null;
+    let runs = Array.isArray(telemetry?.runs) ? telemetry.runs : [];
+    let latest = runs[0] ?? null;
     ensure(latest, "No semantic telemetry runs found", telemetry);
 
     step = "check-staleness";
-    const fetchedAtMs = Date.parse(String(latest.fetchedAt || ""));
+    let fetchedAtMs = Date.parse(String(latest.fetchedAt || ""));
     ensure(Number.isFinite(fetchedAtMs), "Invalid fetchedAt in telemetry run", latest);
 
-    const staleMinutes = (Date.now() - fetchedAtMs) / 60000;
+    let staleMinutes = (Date.now() - fetchedAtMs) / 60000;
+    const staleRecovery = {
+      enabled: monitorAutoRecoverStale,
+      attempted: false,
+      succeeded: false,
+      beforeMinutes: Number(staleMinutes.toFixed(2)),
+      afterMinutes: Number(staleMinutes.toFixed(2)),
+      refreshRunId: null,
+      refreshDurationMs: null,
+      error: null,
+    };
+
+    if (staleMinutes > maxStaleMinutes && monitorAutoRecoverStale) {
+      step = "recover-stale-feed";
+      staleRecovery.attempted = true;
+      const refreshStarted = Date.now();
+      try {
+        const refreshPayload = await triggerAdminRefresh(baseUrl, adminToken, monitorRefreshTimeoutMs);
+        staleRecovery.refreshDurationMs = Date.now() - refreshStarted;
+        staleRecovery.refreshRunId = refreshPayload?.summary?.runId ?? null;
+
+        step = "recheck-semantic-metrics";
+        telemetry = await fetchJson(metricsUrl, {
+          headers: {
+            "X-Admin-Token": adminToken,
+          },
+        });
+        runs = Array.isArray(telemetry?.runs) ? telemetry.runs : [];
+        latest = runs[0] ?? null;
+        ensure(latest, "No semantic telemetry runs found after stale recovery refresh", telemetry);
+        fetchedAtMs = Date.parse(String(latest.fetchedAt || ""));
+        ensure(Number.isFinite(fetchedAtMs), "Invalid fetchedAt after stale recovery refresh", latest);
+        staleMinutes = (Date.now() - fetchedAtMs) / 60000;
+        staleRecovery.afterMinutes = Number(staleMinutes.toFixed(2));
+        staleRecovery.succeeded = staleMinutes <= maxStaleMinutes;
+      } catch (error) {
+        staleRecovery.error = error?.message || String(error);
+        throw toError(
+          alertMessage("ALERT_STALE_RECOVERY_FAILED", "Auto-recovery refresh failed for stale feed"),
+          staleRecovery,
+          { step: "recover-stale-feed" }
+        );
+      }
+    }
+
     ensure(
       staleMinutes <= maxStaleMinutes,
       alertMessage(
         "ALERT_STALE_FEED",
         `Feed refresh is stale: ${staleMinutes.toFixed(1)} min > ${maxStaleMinutes} min`
       ),
-      latest
+      {
+        latestRun: latest,
+        staleRecovery,
+      }
     );
 
     step = "check-semantic-failure-streak";
@@ -233,6 +305,7 @@ async function main() {
         staleFeed: {
           thresholdMinutes: maxStaleMinutes,
           triggered: false,
+          recovery: staleRecovery,
         },
         semanticFailureStreak: {
           thresholdRuns: semanticFailureStreak,
