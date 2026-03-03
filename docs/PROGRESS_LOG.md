@@ -1031,3 +1031,35 @@
      - `https://staging.coasensus.com/api/health` => `200`
      - production feed `totalItems=94` (non-empty)
      - staging feed `totalItems=94` (non-empty).
+331. Captured fresh editorial evidence for launch sign-off:
+   - `Editorial Spotcheck` run `22621825819` => `success` (`overallOk=true`).
+   - artifact downloaded and reviewed: `artifacts/editorial-22621825819/editorial-spotcheck.json` + `.md`.
+   - production top-20 composition: politics `13` (0.65), geopolitics `5` (0.25), economy `1` (0.05), sports `1` (0.05).
+   - staging top-20 composition: politics `13` (0.65), geopolitics `5` (0.25), economy `2` (0.10).
+332. Re-verified production and staging API smoke/auth gates (`2026-03-03`):
+   - production:
+     - `GET /api/health` => `200` (`status=ok`)
+     - `GET /api/feed?page=1&pageSize=3&sort=score` => `200`, `totalItems=93`, `scoreFormula=front_page_score_v1`
+     - `GET /api/admin/semantic-metrics?limit=1` without token => `401`
+     - same endpoint with admin token => `200`, latest run `2026-03-03T11-45-13-427Z`
+   - staging:
+     - `GET /api/health` => `200` (`status=ok`)
+     - `GET /api/feed?page=1&pageSize=3&sort=score` => `200`, `totalItems=93`, `scoreFormula=front_page_score_v1`
+     - `GET /api/admin/semantic-metrics?limit=1` without token => `401`
+     - same endpoint with admin token => `200`, latest run `2026-03-03T11-30-12-326Z`.
+333. Workflow green snapshot at sign-off time:
+   - `Monitor Production` latest run `22621775825` => `success`.
+   - `Monitor Staging` latest run `22621725790` => `success`.
+   - `Launch Stability` latest run `22621743404` => `success` (`overallReady=true`).
+334. Deployment metadata record (latest production deploy):
+   - workflow: `Deploy Cloudflare` run `22613174590` => `success`.
+   - deployed commit SHA: `0a4726b7cacfb59b49407fad82532038dd4a667a`.
+   - Worker version id: `81fdb1b3-a9df-45eb-a858-682994e93504`.
+   - Pages deployment URL: `https://76a13078.coasensus-web.pages.dev`.
+   - DNS upserts confirmed for:
+     - `coasensus.com` -> `coasensus-web.pages.dev`
+     - `staging.coasensus.com` -> `coasensus-web.pages.dev`.
+335. Launch checkpoint decision (`2026-03-03T12:01:00Z`):
+   - decision: `GO-LIVE READY (strict gate satisfied)`.
+   - owner: `AhmadTahmid + Codex`.
+   - rationale: health/feed/auth gates passing in both environments, monitors green, launch-stability green, and editorial review log updated with current snapshot evidence.
