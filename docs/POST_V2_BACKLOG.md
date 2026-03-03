@@ -8,6 +8,16 @@ This backlog starts after `MILESTONE-PERF-008` completion and focuses on launch 
 
 ## Recently Completed
 
+### `MILESTONE-OPS-SNAPSHOT-017`
+- Goal: make post-launch operations health visible from one automated artifact instead of ad-hoc checks.
+- Scope:
+  - Add scheduled `Ops Snapshot` GitHub workflow.
+  - Generate `artifacts/ops-snapshot.json` and `artifacts/ops-snapshot.md` with environment and workflow health.
+  - Fail workflow on critical drift: auth mismatch, stale/empty feed, low LLM success, category over-dominance, or stale/failed monitors.
+- Acceptance:
+  - Hourly snapshot run produces downloadable JSON + markdown artifacts.
+  - Workflow is red when required checks breach thresholds, providing explicit alert codes/messages in the artifact.
+
 ### `MILESTONE-SMART-FIREHOSE-016`
 - Goal: shift ingest toward incremental market updates while preserving reliability.
 - Scope:

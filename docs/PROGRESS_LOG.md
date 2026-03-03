@@ -1073,3 +1073,24 @@
    - admin semantic endpoint auth remained correct:
      - production: no token `401`, valid token `200`, latest run `2026-03-03T12-00-11-555Z`
      - staging: no token `401`, valid token `200`, latest run `2026-03-03T12-00-11-634Z`.
+337. Added consolidated operations snapshot script (`scripts/ops-snapshot.mjs`):
+   - checks production and staging runtime gates in one pass:
+     - `/api/health`, `/api/feed`, admin auth behavior (`401` without token, `200` with token)
+     - semantic freshness + LLM success threshold (`COASENSUS_LLM_SUCCESS_RATE_MIN`)
+     - top-N category dominance threshold (`COASENSUS_CATEGORY_DOMINANCE_MAX_SHARE`).
+   - checks latest GitHub workflow health for:
+     - `monitor-production.yml`
+     - `monitor-staging.yml`
+     - `launch-stability.yml`
+     - `editorial-spotcheck.yml`.
+   - emits artifacts:
+     - `artifacts/ops-snapshot.json`
+     - `artifacts/ops-snapshot.md`.
+   - exits non-zero on critical alerts to surface actionable failures directly in CI.
+338. Added scheduled operations workflow (`.github/workflows/ops-snapshot.yml`):
+   - cadence: hourly (`11 * * * *`) + manual dispatch.
+   - uses existing staged/prod admin token secrets and repository `GITHUB_TOKEN`.
+   - uploads ops snapshot artifacts on every run (`if: always()`) for debugging even on failures.
+339. Backlog/roadmap bookkeeping updates:
+   - marked `MILESTONE-OPS-SNAPSHOT-017` as completed in `docs/ROADMAP_QUEUE.md`.
+   - recorded milestone details in `docs/POST_V2_BACKLOG.md` under Recently Completed.
