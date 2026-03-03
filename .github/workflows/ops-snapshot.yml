@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
   actions: read
+  issues: write
 
 jobs:
   snapshot:
@@ -46,3 +47,12 @@ jobs:
           name: ops-snapshot-${{ github.run_id }}
           path: artifacts/ops-snapshot.*
           if-no-files-found: error
+
+      - name: Route Ops Alerts
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COASENSUS_OPS_SNAPSHOT_PATH: artifacts/ops-snapshot.json
+          COASENSUS_OPS_ALERT_LABEL: ops-alert
+          COASENSUS_OPS_ALERT_TITLE: "[Ops Snapshot] Active Incident"
+        run: node scripts/ops-alert-routing.mjs

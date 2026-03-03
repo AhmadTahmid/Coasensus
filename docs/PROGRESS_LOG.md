@@ -1094,3 +1094,15 @@
 339. Backlog/roadmap bookkeeping updates:
    - marked `MILESTONE-OPS-SNAPSHOT-017` as completed in `docs/ROADMAP_QUEUE.md`.
    - recorded milestone details in `docs/POST_V2_BACKLOG.md` under Recently Completed.
+340. Added automated incident routing for ops failures:
+   - new script `scripts/ops-alert-routing.mjs` reads `artifacts/ops-snapshot.json` and manages a single active incident issue.
+   - incident policy:
+     - if snapshot `ok=false`: create/update issue titled `[Ops Snapshot] Active Incident` (label: `ops-alert`)
+     - if snapshot `ok=true`: comment recovery evidence and close that issue if it exists.
+   - fallback behavior: if snapshot artifact is missing/unreadable, route a synthetic `OPS_SNAPSHOT_ARTIFACT_MISSING` incident.
+341. Updated ops workflow permissions/routing:
+   - `.github/workflows/ops-snapshot.yml` now includes `issues: write` permission.
+   - added `Route Ops Alerts` step (`if: always()`) so incident state is reconciled on both passing and failing runs.
+342. Launch docs updated for incident visibility:
+   - `docs/LAUNCH_GATES.md` now states that active ops failures are mirrored to GitHub issue tracking (`ops-alert`).
+   - roadmap/backlog entries recorded for `MILESTONE-OPS-ALERT-ROUTING-018`.

@@ -43,6 +43,7 @@ This document defines go/no-go criteria for public launch decisions.
 3. Semantic alert: `llmFailures > 0` for 3 consecutive runs
 4. Reliability alert: monitor workflow fails twice in a row
 5. Consolidated ops alert: `.github/workflows/ops-snapshot.yml` fails when any critical threshold above is breached.
+6. Incident routing: active ops snapshot failures are mirrored to a single labeled GitHub issue (`ops-alert`) until recovery.
 
 ## Go-live checklist
 1. Run `docs/DEPLOY_VERIFICATION_CHECKLIST.md` for staging and production.

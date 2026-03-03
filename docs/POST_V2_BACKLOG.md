@@ -8,6 +8,16 @@ This backlog starts after `MILESTONE-PERF-008` completion and focuses on launch 
 
 ## Recently Completed
 
+### `MILESTONE-OPS-ALERT-ROUTING-018`
+- Goal: ensure operations failures create actionable, persistent incident records instead of silent red checks.
+- Scope:
+  - Add `scripts/ops-alert-routing.mjs` to manage incident lifecycle from `ops-snapshot` output.
+  - Wire `.github/workflows/ops-snapshot.yml` to call routing script on every run (`if: always()`).
+  - Auto-create/update one labeled issue (`ops-alert`) while incident is active, then auto-close on recovery.
+- Acceptance:
+  - Failed ops snapshot run opens or updates a single active incident issue.
+  - Recovered ops snapshot run comments closure evidence and closes that incident issue.
+
 ### `MILESTONE-OPS-SNAPSHOT-017`
 - Goal: make post-launch operations health visible from one automated artifact instead of ad-hoc checks.
 - Scope:

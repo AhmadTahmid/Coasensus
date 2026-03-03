@@ -27,6 +27,7 @@ Lightweight tracker to keep momentum high while preserving deferred work.
 - [x] `MILESTONE-RANKING-TESTS-015` Add dedicated ranking regression/edge-case test suite.
 - [x] `MILESTONE-UI-POLISH-014` Add masonry feed layout + richer news-card anatomy/iconography polish.
 - [x] `MILESTONE-OPS-SNAPSHOT-017` Add scheduled operations snapshot workflow with artifact dashboard + threshold alerts.
+- [x] `MILESTONE-OPS-ALERT-ROUTING-018` Route ops snapshot failures to auto-managed GitHub incident issues.
 
 ## Next
 
