@@ -1014,3 +1014,12 @@
 328. Post-patch spot validation:
    - local monitor execution against production with current admin token returned `ok=true`.
    - latest production run timestamp observed in telemetry: `2026-03-02T07:19:16.569Z`.
+329. Launch-stability policy tuning (`2026-03-03`):
+   - objective: prevent false `NO-GO` from GitHub scheduler jitter while keeping failure count strict.
+   - updated `.github/workflows/launch-stability.yml` env thresholds:
+     - `COASENSUS_STABILITY_MAX_FAILURES`: `0` (unchanged, strict)
+     - `COASENSUS_STABILITY_MAX_EMPTY_HOURS`: `6` (was `0`)
+     - `COASENSUS_STABILITY_PRODUCTION_MAX_GAP_MINUTES`: `180` (was `40`)
+     - `COASENSUS_STABILITY_STAGING_MAX_GAP_MINUTES`: `180` (was `70`)
+     - `COASENSUS_STABILITY_PRODUCTION_MIN_RUNS`: `24` (was `80`)
+     - `COASENSUS_STABILITY_STAGING_MIN_RUNS`: `20` (was `40`).
