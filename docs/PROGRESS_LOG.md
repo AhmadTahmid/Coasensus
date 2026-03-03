@@ -1063,3 +1063,13 @@
    - decision: `GO-LIVE READY (strict gate satisfied)`.
    - owner: `AhmadTahmid + Codex`.
    - rationale: health/feed/auth gates passing in both environments, monitors green, launch-stability green, and editorial review log updated with current snapshot evidence.
+336. Post-sign-off deploy regression check (`2026-03-03`):
+   - `Deploy Cloudflare` run `22622071053` (triggered by docs push) => `success`.
+   - post-deploy smoke checks:
+     - `https://coasensus.com/api/health` => `200` (`status=ok`)
+     - `https://staging.coasensus.com/api/health` => `200` (`status=ok`)
+     - production feed => `200`, `totalItems=93`, `scoreFormula=front_page_score_v1`
+     - staging feed => `200`, `totalItems=93`, `scoreFormula=front_page_score_v1`
+   - admin semantic endpoint auth remained correct:
+     - production: no token `401`, valid token `200`, latest run `2026-03-03T12-00-11-555Z`
+     - staging: no token `401`, valid token `200`, latest run `2026-03-03T12-00-11-634Z`.
